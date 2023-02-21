@@ -1,0 +1,8 @@
+The big O notation is a way to describe the limiting behavior of a function as its input size approaches infinity. 
+In the case of the sequence 1+0,2+1,3+1+2,4+1+2+3,..., the nth term is given by the formula:
+
+n*(n+1)/2 + (n-1) = (n^2 + n)/2.
+
+Since the dominant term in this formula is n^2, we can say that the sequence grows asymptotically as O(n^2), 
+or "order n squared". This means that the growth rate of the sequence is proportional to n^2 as n becomes very large. 
+In other words, the sequence grows at most as fast as a quadratic function.
