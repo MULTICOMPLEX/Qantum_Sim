@@ -20,19 +20,19 @@ hbar = 1.0
 
 #extent = 25 * Å
 
-n = 2048
+n = 2048*2
 
 js = {
  "name": "Q0",
  "mode": "two tunnel+-",
- "total time": 1 * femtoseconds, 
+ "total time": 0.5 * femtoseconds, 
  "store steps": 20,
  "σ": 0.7 * Å, 
  "v0": 60, #initial_wavefunction momentum
  "V0": 2, #barrier voltage 
  "initial offset": 0,
  "N": n,
- "dt": 0.5, 
+ "dt": 0.25, 
  "x0": 0, #barrier x
  "x1": 3,
  "x2": 12,
@@ -42,7 +42,7 @@ js = {
  "NW": 150, #+1 ground state
  "imaginary time evolution": True,
  "animation duration": 10, #seconds
- "save animation": False,
+ "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
  "title": "1D harmonic oscillator imaginary time evolution"
@@ -56,7 +56,7 @@ def harmonic_oscillator():
     T = 0.6*femtoseconds
     w = 2*np.pi/T
     k = m* w**2
-    return 1.6 * k * x**2 #150, 1
+    return 2 * k * x**2 #150, 1
 
 #=========================================================================================================#
 # Define the wavefunction at t = 0  (initial condition)
@@ -159,7 +159,7 @@ for i in bar(range(js["NW"])):
 print("Took", time.time() - t0)
 
 Ψ[0] = norm(Ψ[-1])
-phi = [Ψ[0]]
+phi.append(Ψ[0])
 
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=js["NW"])
