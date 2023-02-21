@@ -42,7 +42,7 @@ js = {
  "NW": 150, #+1 ground state
  "imaginary time evolution": True,
  "animation duration": 10, #seconds
- "save animation": True,
+ "save animation": False,
  "fps": 30,
  "path save": "./gifs/",
  "title": "1D harmonic oscillator imaginary time evolution"
@@ -71,14 +71,24 @@ def initial_wavefunction():
 
 
 def norm(phi):
+    norm_sq = np.dot(np.conj(phi), phi) * dt
+    return phi / np.sqrt(norm_sq)
+
+def norm2(phi):
     norm = np.sum(np.square(np.abs(phi)))*dt
     return phi/np.sqrt(norm)
-    
 
 def apply_projection(tmp, psi_list):
     for psi in psi_list:
+        proj = np.dot(np.conj(psi)*dt, tmp) * psi
+        tmp -= proj
+    return tmp
+
+def apply_projection2(tmp, psi_list):
+    for psi in psi_list:
         tmp -= np.sum(tmp*np.conj(psi)*dt)*psi
     return tmp
+    
 
 def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp):
     for i in range(store_steps):
@@ -87,8 +97,9 @@ def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp):
             fft_object(Ur*tmp, c)
             ifft_object(Uk*c, tmp)
             tmp *= Ur
-            tmp = norm(apply_projection(tmp, phi))
-        Ψ[i+1] = tmp
+            tmp = apply_projection(tmp, phi)
+            #tmp = norm(apply_projection(tmp, phi))
+        Ψ[i+1] = norm(tmp)
     return 
 
 def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, tmpp):
