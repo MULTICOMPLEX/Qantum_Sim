@@ -5,6 +5,10 @@ import pyfftw
 import scipy
 import multiprocessing
 
+from scipy.sparse.linalg import eigsh
+from scipy.sparse import eye
+from scipy.sparse import diags
+
 import matplotlib.pyplot as plt
 from matplotlib import widgets
 from matplotlib import animation
@@ -17,6 +21,7 @@ import copy
 femtoseconds = 4.134137333518212 * 10.
 m_e = 1.0
 hbar = 1.0
+eV = 0.03674932217565499
 
 #extent = 25 * Å
 
@@ -36,13 +41,13 @@ js = {
  "x0": 0, #barrier x
  "x1": 3,
  "x2": 12,
- "extent": 30 * Å,#150, 30
+ "extent": 20 * Å,#150, 30
  "extentN": -75 * Å,
  "extentP": +85 * Å,
- "NW": 150, #+1 ground state
+ "NW": 51, 
  "imaginary time evolution": True,
  "animation duration": 10, #seconds
- "save animation": False,
+ "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
  "title": "1D harmonic oscillator imaginary time evolution"
@@ -62,9 +67,9 @@ def harmonic_oscillator():
 # Define the wavefunction at t = 0  (initial condition)
 #=========================================================================================================#
 
-def initial_wavefunction():
+def initial_wavefunction(σ):
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
-    σ = 0.7 * Å
+    σ = σ
     v0 = js["v0"] * Å / femtoseconds
     p_x0 = m_e * v0
     return np.exp( -1/(4* σ**2) * ((x-js["initial offset"])**2) / np.sqrt(2*np.pi* σ**2))  *np.exp(p_x0*x*1j)
@@ -110,10 +115,11 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, tmpp):
         Ψ[i+1] = norm(tmp)
     return 
 
-def complex_plot(phi):
-    plt.plot(x, np.abs(phi))
-    plt.plot(x, np.real(phi))
-    plt.plot(x, np.imag(phi))
+def complex_plot(x, phi):
+    plt.plot(x, np.abs(phi), label='$|\psi(x)|$')
+    plt.plot(x, np.real(phi), label='$Re|\psi(x)|$')
+    plt.plot(x, np.imag(phi), label='$Im|\psi(x)|$')
+    plt.legend(loc = 'lower left')
     plt.show()
     return 
 
@@ -157,13 +163,13 @@ ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 print("store_steps",js["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
 
-Ψ[0] = norm(initial_wavefunction())
+Ψ[0] = norm(initial_wavefunction(js["σ"]))
 phi = [Ψ[0]]
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
-for i in bar(range(js["NW"])):
+for i in bar(range(1)):
     ITE(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
@@ -173,10 +179,51 @@ phi.append(Ψ[0])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=js["NW"])
 #raising operators
-for i in bar(range(js["NW"])):
+for i in bar(range(js["NW"]-1)):
     ITE(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
     phi.append(norm(Ψ[-1])) 
 print("Took", time.time() - t0)
+
+def Harmonic_oscillator():
+	k = 100 * eV / Å**2
+	return 0.5 * k * xx**2
+
+def get_eigenstates(max_states, eigenvalues, eigenvectors):
+        energies = eigenvalues
+        eigenstates_array = np.moveaxis(eigenvectors.reshape(  *[N]*1 , max_states), -1, 0)
+
+        # Finish the normalization of the eigenstates
+        eigenstates_array = eigenstates_array/np.sqrt(dxx**1)
+
+        return eigenstates_array
+
+N = 512
+extent = 20*Å
+
+xx = np.linspace(-extent/2, extent/2, N)
+
+dxx = xx[1] - xx[0]
+dxx = extent/(N-1)
+
+dxx = extent/N #not correct
+
+I = eye(N)
+T = diags([-2., 1., 1.], [0,-1, 1] , shape=(N, N))*-0.5/(m*dxx**2)
+    
+V = Harmonic_oscillator()
+E_min = np.amin(V)
+
+V = V.reshape(N ** 1)
+V = diags([V], [0])
+
+H = T + V
+
+max_states = 5
+
+eigenvalues, eigenvectors = eigsh(H, k=max_states, which='LM', sigma=min(0, E_min))
+print(eigenvalues/eV)
+
+#complex_plot(xx, get_eigenstates(max_states, eigenvalues, eigenvectors)[4])
 
 
 Ψ /= np.amax(np.abs(Ψ))
@@ -264,5 +311,5 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
 #visualize the time dependent simulation
 animate(xlim=[-js["extent"]/2/Å, js["extent"]/2/Å], animation_duration = js["animation duration"], fps = js["fps"], 
-save_animation = js["save animation"], title = js["title"]+" "+str(js["NW"]+1)+" cycles")
+save_animation = js["save animation"], title = js["title"]+" "+str(js["NW"])+" states")
 
