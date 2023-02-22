@@ -71,8 +71,7 @@ def initial_wavefunction():
 
 
 def norm(phi):
-    norm_sq = np.dot(np.conj(phi), phi) * dt
-    return phi / np.sqrt(norm_sq)
+    return phi / np.sqrt(np.vdot(phi, phi) * dt)
 
 def norm2(phi):
     norm = np.sum(np.square(np.abs(phi)))*dt
@@ -80,8 +79,7 @@ def norm2(phi):
 
 def apply_projection(tmp, psi_list):
     for psi in psi_list:
-        proj = np.dot(np.conj(psi)*dt, tmp) * psi
-        tmp -= proj
+        tmp -= np.vdot(psi*dt, tmp) * psi
     return tmp
 
 def apply_projection2(tmp, psi_list):
@@ -108,8 +106,8 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, tmpp):
         for j in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-            tmp = norm(apply_projection(tmp, phi))
-        Ψ[i+1] = tmp
+        tmp = apply_projection(tmp, phi)
+        Ψ[i+1] = norm(tmp)
     return 
 
 def complex_plot(phi):
