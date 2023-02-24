@@ -216,11 +216,15 @@ def expectation_value(psi, operator):
     expectation = np.sum(np.abs(operator_values)**2) * dx
     return expectation
 
-psi = Ψ[-1]
-H_expectation = expectation_value(psi, hamiltonian_operator)   
-print("energy", H_expectation)
-energy = H_expectation
+psi = Ψ
+H_expectation = np.array([])
+for i in(psi):
+    H_expectation = np.append(H_expectation, expectation_value(i, hamiltonian_operator))  
 
+print("\nenergy =\n", H_expectation.reshape(-1, 1))
+energy = H_expectation[-1]
+
+psi = Ψ[-1]
 def hamiltonian_operator2(psi, x, m, V):
     dx = x[1] - x[0]
     psi_x_plus = np.roll(psi, -1) # Shift psi(x) to the right
@@ -240,8 +244,8 @@ x_min = -js["extent"]/2
 x_max = js["extent"]/2
 num_points = n
 
-H_expectation = expectation_value2(psi, hamiltonian_operator2, x_min, x_max, num_points, m, V)
-#print("energy", H_expectation)
+H_expectation2 = expectation_value2(psi, hamiltonian_operator2, x_min, x_max, num_points, m, V)
+#print("energy", H_expectation2)
 
 Ψ /= np.amax(np.abs(Ψ))
 
@@ -280,10 +284,12 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         
         energy_ax = ax.text(0.97,0.07, "", color = 'white', 
                          transform=ax.transAxes, ha="right", va="top")
-        energy_ax.set_text(u"energy = {} joules".format("%.6e" % energy))
         
         index = 0
         
+        energy_ax.set_text(u"energy = {} joules".format("%.6e" % H_expectation[index]))
+        
+      
         potential_plot = ax.plot(x/Å, (V + Vmin)/(Vmax-Vmin), label='$V(x)$')  
         real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
         imag_plot, = ax.plot(x/Å, np.imag(Ψ[index]), label='$Im|\psi(x)|$')
@@ -305,7 +311,11 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
             if animation_data['t'] > js["total time"]:
                 animation_data['t'] = 0.0
 
+            
             index = animation_data['index']
+            
+            energy_ax.set_text(u"energy = {} joules".format("%.6e" % H_expectation[index]))
+            
          
             #print(index)
             
