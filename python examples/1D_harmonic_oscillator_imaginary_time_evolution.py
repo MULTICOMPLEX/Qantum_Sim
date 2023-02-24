@@ -44,10 +44,10 @@ js = {
  "extent": 20 * Å,#150, 30
  "extentN": -75 * Å,
  "extentP": +85 * Å,
- "NW": 51, 
+ "NW": 22, 
  "imaginary time evolution": True,
  "animation duration": 10, #seconds
- "save animation": True,
+ "save animation": False,
  "fps": 30,
  "path save": "./gifs/",
  "title": "1D harmonic oscillator imaginary time evolution"
@@ -61,18 +61,18 @@ def harmonic_oscillator():
     T = 0.6*femtoseconds
     w = 2*np.pi/T
     k = m* w**2
-    return 2 * k * x**2 #150, 1
-
+    return 2 * k * x**2 
+    
 #=========================================================================================================#
 # Define the wavefunction at t = 0  (initial condition)
 #=========================================================================================================#
 
-def initial_wavefunction(σ):
+def initial_wavefunction(σ, v0, offset):
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     σ = σ
-    v0 = js["v0"] * Å / femtoseconds
+    v0 = v0 * Å / femtoseconds
     p_x0 = m_e * v0
-    return np.exp( -1/(4* σ**2) * ((x-js["initial offset"])**2) / np.sqrt(2*np.pi* σ**2))  *np.exp(p_x0*x*1j)
+    return np.exp( -1/(4* σ**2) * ((x-offset)**2) / np.sqrt(2*np.pi* σ**2))  *np.exp(p_x0*x*1j)
 
 
 def norm(phi):
@@ -111,7 +111,7 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, tmpp):
         for j in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-        tmp = apply_projection(tmp, phi)
+            tmp = apply_projection(tmp, phi)
         Ψ[i+1] = norm(tmp)
     return 
 
@@ -123,10 +123,10 @@ def complex_plot(x, phi):
     plt.show()
     return 
 
-Vgrid = harmonic_oscillator()
+V = harmonic_oscillator()
  
-Vmin = np.amin(Vgrid)
-Vmax = np.amax(Vgrid)
+Vmin = np.amin(V)
+Vmax = np.amax(V)
 
 dx = x[1] - x[0]
 px = np.fft.fftfreq(js["N"], d = dx) * hbar  * 2*np.pi
@@ -142,11 +142,11 @@ dt = dt_store/Nt_per_store_step
             
 m = 1     
 if(js["imaginary time evolution"]):     
-    Ur = np.exp(-0.5*(dt/hbar)*Vgrid)
+    Ur = np.exp(-0.5*(dt/hbar)*V)
     Uk = np.exp(-0.5*(dt/(m*hbar))*p2)
 
 else:
-  Ur = np.exp(-0.5j*(dt/hbar)*Vgrid)
+  Ur = np.exp(-0.5j*(dt/hbar)*V)
   Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
@@ -163,68 +163,85 @@ ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 print("store_steps",js["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
 
-Ψ[0] = norm(initial_wavefunction(js["σ"]))
+Ψ[0] = norm(initial_wavefunction(js["σ"], js["v0"], js["initial offset"]))
 phi = [Ψ[0]]
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for i in bar(range(1)):
-    ITE(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    ITEnp(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
 Ψ[0] = norm(Ψ[-1])
 phi.append(Ψ[0])
 
 t0 = time.time()
-bar = progressbar.ProgressBar(maxval=js["NW"])
+if(js["NW"]-1):
+    bar = progressbar.ProgressBar(maxval=js["NW"])
 #raising operators
 for i in bar(range(js["NW"]-1)):
-    ITE(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    ITEnp(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
     phi.append(norm(Ψ[-1])) 
-print("Took", time.time() - t0)
+if(js["NW"]-1):
+    print("Took", time.time() - t0)
 
-def Harmonic_oscillator():
-	k = 100 * eV / Å**2
-	return 0.5 * k * xx**2
 
-def get_eigenstates(max_states, eigenvalues, eigenvectors):
-        energies = eigenvalues
-        eigenstates_array = np.moveaxis(eigenvectors.reshape(  *[N]*1 , max_states), -1, 0)
+def differentiate_twice(f):
+    f = np.fft.ifftn(-p2*np.fft.fftn(f))
+    return f
 
-        # Finish the normalization of the eigenstates
-        eigenstates_array = eigenstates_array/np.sqrt(dxx**1)
+hbar = 1.054571817e-34    # Reduced Planck constant in J*s
+m = 9.10938356e-31        # Mass of electron in kg
+m_e = m
+V = harmonic_oscillator()
 
-        return eigenstates_array
-
-N = 512
-extent = 20*Å
-
-xx = np.linspace(-extent/2, extent/2, N)
-
-dxx = xx[1] - xx[0]
-dxx = extent/(N-1)
-
-dxx = extent/N #not correct
-
-I = eye(N)
-T = diags([-2., 1., 1.], [0,-1, 1] , shape=(N, N))*-0.5/(m*dxx**2)
+# Define the Hamiltonian operator
+def hamiltonian_operator(psi):
+    # Calculate the kinetic energy part of the Hamiltonian
+    KE = -(hbar**2 / 2*m) * differentiate_twice(psi)
+    #K = -(hbar^2 / 2m) * d^2/dx^2
+    #KE = (hbar^2 / 2m) * |dpsi/dx|^2
+    # Calculate the potential energy part of the Hamiltonian
+    PE = V * psi
+    # Combine the kinetic and potential energy parts to obtain the full Hamiltonian
+    H = KE + PE
+    return H
     
-V = Harmonic_oscillator()
-E_min = np.amin(V)
+def x_operator(psi, x):
+    return x * psi 
+    
+def expectation_value(psi, operator):
+    operator_values = operator(psi)
+    expectation = np.sum(np.abs(operator_values)**2) * dx
+    return expectation
 
-V = V.reshape(N ** 1)
-V = diags([V], [0])
+psi = Ψ[-1]
+H_expectation = expectation_value(psi, hamiltonian_operator)   
+print("energy", H_expectation)
+energy = H_expectation
 
-H = T + V
+def hamiltonian_operator2(psi, x, m, V):
+    dx = x[1] - x[0]
+    psi_x_plus = np.roll(psi, -1) # Shift psi(x) to the right
+    psi_x_minus = np.roll(psi, 1) # Shift psi(x) to the left
+    kinetic_term = -(hbar**2 / 2*m) * (psi_x_minus - 2 * psi + psi_x_plus) / dx**2
+    potential_term = V * psi
+    return kinetic_term + potential_term
 
-max_states = 5
+def expectation_value2(psi, operator, x_min, x_max, num_points, m, V):
+    x_values = np.linspace(x_min, x_max, num_points)
+    dx = x_values[1] - x_values[0]
+    operator_values = operator(psi, x_values, m, V)
+    expectation = np.sum(np.abs(operator_values)**2) * dx
+    return expectation
+    
+x_min = -js["extent"]/2
+x_max = js["extent"]/2
+num_points = n
 
-eigenvalues, eigenvectors = eigsh(H, k=max_states, which='LM', sigma=min(0, E_min))
-print(eigenvalues/eV)
-
-#complex_plot(xx, get_eigenstates(max_states, eigenvalues, eigenvectors)[4])
-
+H_expectation = expectation_value2(psi, hamiltonian_operator2, x_min, x_max, num_points, m, V)
+#print("energy", H_expectation)
 
 Ψ /= np.amax(np.abs(Ψ))
 
@@ -259,11 +276,15 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
         plt.xlim(xlim)
         plt.ylim(-1, 1.1)
+       
         
-
+        energy_ax = ax.text(0.97,0.07, "", color = 'white', 
+                         transform=ax.transAxes, ha="right", va="top")
+        energy_ax.set_text(u"energy = {} joules".format("%.6e" % energy))
+        
         index = 0
         
-        potential_plot = ax.plot(x/Å, (Vgrid + Vmin)/(Vmax-Vmin), label='$V(x)$')  
+        potential_plot = ax.plot(x/Å, (V + Vmin)/(Vmax-Vmin), label='$V(x)$')  
         real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
         imag_plot, = ax.plot(x/Å, np.imag(Ψ[index]), label='$Im|\psi(x)|$')
         abs_plot, = ax.plot(x/Å, np.abs(Ψ[index]), label='$|\psi(x)|$')
