@@ -267,7 +267,6 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
     total_frames = int(fps * animation_duration)
 
-    
 
     fig = plt.figure(figsize=figsize, facecolor='#002b36')
     ax = fig.add_subplot(1, 1, 1)
@@ -309,27 +308,21 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
     dt = S["total time"]/(total_frames)
 
     xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
+    psi_index = np.linspace(0, S["store steps"], total_frames)
     
-    animation_data = {'t': 0, 'x': x, 'ax': ax, 'index': 0, 'frame': -1}
-    def func_animation(*arg):
+    def func_animation(frame):
 
-        index = animation_data['index']
+        index = int(psi_index[frame])
 
         energy_ax.set_text(u"energy = {} joules".format(
             "%.6e" % H_expectation[index]))
         
         time_ax.set_text(u"t = {} femtoseconds".format(
-            "%.3f" % (xdt[animation_data['frame']])))
+            "%.3f" % (xdt[frame])))
         
         real_plot.set_ydata(np.real(Ψ[index]))
         imag_plot.set_ydata(np.imag(Ψ[index]))
         abs_plot.set_ydata(np.abs(Ψ[index]))
-        
-        animation_data['index'] = int(
-            (S["store steps"])/S["total time"] * animation_data['t'])
-        
-        animation_data['t'] += dt
-        animation_data['frame'] += 1
         
         return
 

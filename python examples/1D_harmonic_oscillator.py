@@ -40,9 +40,9 @@ S = {
  "extentP": +85 * Å,
  "imaginary time evolution": False,
  "animation duration": 10, #seconds
- "save animation": False,
+ "save animation": True,
  "fps": 30,
- "path save": "../gifs/",
+ "path save": "./gifs/",
  "title": "1D harmonic oscillator"
 }
 
@@ -170,31 +170,20 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
                text.set_color(line.get_color())
 
 
-        #print(total_frames)
-        animation_data = {'t': 0.0, 'x': x, 'ax': ax, 'frame': 0, 'index': 0}
+        xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
+        psi_index = np.linspace(0, S["store steps"], total_frames)
+        
+        def func_animation(frame):
+            
+            index = int(psi_index[frame])
 
-        def func_animation(*arg):
-
-            time_ax.set_text(u"t = {} femtoseconds".format(
-                "%.3f" % (animation_data['t']/femtoseconds)))
-
-            if animation_data['t'] > S["total time"]:
-                animation_data['t'] = 0.0
-
-            index = animation_data['index']
-
-            # print(index)
-
+            time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
+        
             real_plot.set_ydata(np.real(Ψ[index]))
             imag_plot.set_ydata(np.imag(Ψ[index]))
             abs_plot.set_ydata(np.abs(Ψ[index]))
-
-            animation_data['index'] = int(
-            (S["store steps"])/S["total time"] * animation_data['t'])
-            animation_data['frame'] += 1
-            animation_data['t'] += dt
-
-            return
+               
+            return 
 
         frame = 0
         ani = animation.FuncAnimation(fig, func_animation,
