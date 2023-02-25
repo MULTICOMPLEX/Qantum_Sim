@@ -54,7 +54,7 @@ public:
 	{"extentP", +85 * qc::Am},
 	{"imaginary time evolution", false},
 	{"animation duration", 4}, //seconds
-	{"save animation", false},
+	{"save animation", true},
 	{"fps", 30},
 	{"path save", "../gifs/"}
 	};

@@ -21,7 +21,7 @@ hbar = 1.0
 
 n = 2048
 
-js = {
+S = {
  "name": "Q0",
  "mode": "two tunnel+-",
  "total time": 25 * femtoseconds,
@@ -49,15 +49,15 @@ js = {
  "title": "1D two potential barrier beta2 V2"
 }
 
-x = np.linspace(js["extentN"], js["extentP"], js["N"])
+x = np.linspace(S["extentN"], S["extentP"], S["N"])
 
 
 #interaction potential
 def potential_barrier():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0    
     a = 1 * Å 
-    barrier = np.where(((x > js["x0"]* Å  - a/2) & (x < js["x0"]* Å  + a/2)), js["V0"], 0)
-    barrier = np.where(((x > js["x1"]* Å  - a/2) & (x < js["x1"]* Å  + a/2)), -js["V0"], barrier)
+    barrier = np.where(((x > S["x0"]* Å  - a/2) & (x < S["x0"]* Å  + a/2)), S["V0"], 0)
+    barrier = np.where(((x > S["x1"]* Å  - a/2) & (x < S["x1"]* Å  + a/2)), -S["V0"], barrier)
     return barrier
 
 
@@ -67,7 +67,7 @@ def initial_wavefunction(offset = -15, v0 = 40):
     offset = -offset
     v0 *= Å / femtoseconds
     p_x0 = m_e * v0 
-    return np.exp( -1/(4* js["σ"]**2) * ((x + offset)**2) / np.sqrt(2*np.pi* js["σ"]**2))  *np.exp(p_x0*x*1j)
+    return np.exp( -1/(4* S["σ"]**2) * ((x + offset)**2) / np.sqrt(2*np.pi* S["σ"]**2))  *np.exp(p_x0*x*1j)
 
  
 Vgrid = potential_barrier()
@@ -76,22 +76,22 @@ Vmin = np.amin(Vgrid)
 Vmax = np.amax(Vgrid)
 
 dx = x[1] - x[0]
-px = np.fft.fftfreq(js["N"], d = dx) * hbar  * 2*np.pi
+px = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
 p2 = px**2 
 
 
-Ψ = np.zeros((js["store steps"] + 1, * [js["N"]]), dtype = np.complex128)
-dt_store = js["total time"]/js["store steps"]
+Ψ = np.zeros((S["store steps"] + 1, * [S["N"]]), dtype = np.complex128)
+dt_store = S["total time"]/S["store steps"]
 
-Nt_per_store_step = int(np.round(dt_store / js["dt"]))
+Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 Nt_per_store_step = Nt_per_store_step
 
 #time/dt and dt_store/dt must be integers. Otherwise dt is rounded to match that the Nt_per_store_stepdivisions are integers
 dt = dt_store/Nt_per_store_step
 
-Ψ = np.zeros((js["store steps"] + 1, *([js["N"]])), dtype = np.complex128)
+Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype = np.complex128)
             
-Ψ[0] = np.array(initial_wavefunction(js["initial offset"], js["beta2"]))
+Ψ[0] = np.array(initial_wavefunction(S["initial offset"], S["beta2"]))
  
 m = 1     
 Ur = np.exp(-0.5j*(dt/hbar)*np.array(Vgrid)) 
@@ -101,18 +101,18 @@ Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
 pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
 pyfftw.interfaces.cache.enable()
      
-tmp = pyfftw.empty_aligned(js["N"],  dtype='complex128')
-c = pyfftw.empty_aligned(js["N"], dtype='complex128')
+tmp = pyfftw.empty_aligned(S["N"],  dtype='complex128')
+c = pyfftw.empty_aligned(S["N"], dtype='complex128')
 fft_object = pyfftw.FFTW(tmp, c, direction='FFTW_FORWARD')
 ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
          
-print("store_steps",js["store steps"])
+print("store_steps",S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
         
 #c = np.fft.fftn(Ur*tmp)
 #tmp = Ur*np.fft.ifftn(Uk*c)
 
-v0 = js["beta2n"]
+v0 = S["beta2n"]
 v0 *= Å / femtoseconds
 p_x0 = m_e * v0 
 
@@ -121,7 +121,7 @@ k /= np.amax(k)
         
 t0 = time.time()
 bar = progressbar.ProgressBar()
-for i in bar(range(js["store steps"])):
+for i in bar(range(S["store steps"])):
     tmp = np.copy(Ψ[i])
     if(i==100):
         tmp = np.abs(tmp) * k
@@ -140,7 +140,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
     
         total_frames = int(fps * animation_duration)
        
-        dt = js["total time"]/total_frames
+        dt = S["total time"]/total_frames
 
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
         ax = fig.add_subplot(1, 1, 1)
@@ -159,10 +159,10 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         ax.spines['right'].set_color('white') 
                
 
-        plt.gcf().axes[0].axvspan(js["x0"] - 0.5, js["x0"] + 0.5, alpha=0.5, color='red')
-        plt.text(js["x0"] - 7., 0.95, '+', horizontalalignment='center', verticalalignment = 'center', color = 'red')
-        plt.gcf().axes[0].axvspan(js["x1"] - 0.5, js["x1"] + 0.5, alpha=0.5, color='gray')
-        plt.text(js["x1"] + 7., 0.95, '-', horizontalalignment='center', verticalalignment = 'center', color = 'gray')
+        plt.gcf().axes[0].axvspan(S["x0"] - 0.5, S["x0"] + 0.5, alpha=0.5, color='red')
+        plt.text(S["x0"] - 7., 0.95, '+', horizontalalignment='center', verticalalignment = 'center', color = 'red')
+        plt.gcf().axes[0].axvspan(S["x1"] - 0.5, S["x1"] + 0.5, alpha=0.5, color='gray')
+        plt.text(S["x1"] + 7., 0.95, '-', horizontalalignment='center', verticalalignment = 'center', color = 'gray')
         
         time_ax = ax.text(0.97,0.97, "",  color = "white",
                         transform=ax.transAxes, ha="right", va="top")
@@ -186,25 +186,29 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
 
         #print(total_frames)
-        animation_data = {'t': 0.0, 'x' :x, 'ax':ax ,'frame' : 0}
+        animation_data = {'t': 0.0, 'x': x, 'ax': ax, 'frame': 0, 'index': 0}
         def func_animation(*arg):
-            
-            time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (animation_data['t']/femtoseconds)))
 
-            animation_data['t'] = animation_data['t'] + dt
-            if animation_data['t'] > js["total time"]:
+            time_ax.set_text(u"t = {} femtoseconds".format(
+                "%.3f" % (animation_data['t']/femtoseconds)))
+
+            if animation_data['t'] > S["total time"]:
                 animation_data['t'] = 0.0
 
-            #print(animation_data['frame'])
-            animation_data['frame'] +=1
-            index = int((js["store steps"])/js["total time"] * animation_data['t'])
+            index = animation_data['index']
+
+            # print(index)
 
             real_plot.set_ydata(np.real(Ψ[index]))
             imag_plot.set_ydata(np.imag(Ψ[index]))
             abs_plot.set_ydata(np.abs(Ψ[index]))
 
+            animation_data['index'] = int(
+            (S["store steps"])/S["total time"] * animation_data['t'])
+            animation_data['frame'] += 1
+            animation_data['t'] += dt
 
-            return real_plot,imag_plot,abs_plot, time_ax
+            return
 
         frame = 0
         ani = animation.FuncAnimation(fig, func_animation,
@@ -212,11 +216,11 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         if save_animation == True:
             if(title == ''):
                 title = "animation"
-            ani.save(js["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
+            ani.save(S["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
         else:
             plt.show()
 
 
 #visualize the time dependent simulation
-animate(animation_duration = js["animation duration"], fps = js["fps"], save_animation = js["save animation"], title = js["title"])
+animate(animation_duration = S["animation duration"], fps = S["fps"], save_animation = S["save animation"], title = S["title"])
 

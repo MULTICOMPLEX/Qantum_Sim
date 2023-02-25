@@ -21,7 +21,7 @@ hbar = 1.0
 
 n = 2048
 
-js = {
+S = {
  "name": "Q0",
  "mode": "two tunnel+-",
  "total time": 1.8 * femtoseconds,
@@ -46,7 +46,7 @@ js = {
  "title": "1D harmonic oscillator"
 }
 
-x = np.linspace(-js["extent"]/2, js["extent"]/2, js["N"])
+x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 
 #interaction potential
 def harmonic_oscillator():
@@ -74,17 +74,17 @@ Vmin = np.amin(Vgrid)
 Vmax = np.amax(Vgrid)
 
 dx = x[1] - x[0]
-px = np.fft.fftfreq(js["N"], d = dx) * hbar  * 2*np.pi
+px = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
 p2 = px**2
 
 
-dt_store = js["total time"]/js["store steps"]
-Nt_per_store_step = int(np.round(dt_store / js["dt"]))
+dt_store = S["total time"]/S["store steps"]
+Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 
 #time/dt and dt_store/dt must be integers. Otherwise dt is rounded to match that the Nt_per_store_stepdivisions are integers
 dt = dt_store/Nt_per_store_step
 
-Ψ = np.zeros((js["store steps"] + 1, *([js["N"]])), dtype = np.complex128)
+Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype = np.complex128)
             
 Ψ[0] = np.array(initial_wavefunction())
  
@@ -98,12 +98,12 @@ pyfftw.interfaces.cache.enable()
 scipy.fft.set_backend(pyfftw.interfaces.scipy_fft)
     
         
-tmp = pyfftw.empty_aligned(js["N"],  dtype='complex128')
-c = pyfftw.empty_aligned(js["N"], dtype='complex128')
+tmp = pyfftw.empty_aligned(S["N"],  dtype='complex128')
+c = pyfftw.empty_aligned(S["N"], dtype='complex128')
 ffft_object = pyfftw.FFTW(tmp, c, direction='FFTW_FORWARD')
 ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
          
-print("store_steps",js["store steps"])
+print("store_steps",S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
         
 #c = np.fft.fftn(Ur*tmp)
@@ -111,7 +111,7 @@ print("Nt_per_store_step",Nt_per_store_step)
         
 t0 = time.time()
 bar = progressbar.ProgressBar()
-for i in bar(range(js["store steps"])):
+for i in bar(range(S["store steps"])):
     tmp = np.copy(Ψ[i])
     for j in range(Nt_per_store_step):
            ffft_object(Ur*tmp, c)
@@ -128,7 +128,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
     
         total_frames = int(fps * animation_duration)
        
-        dt = js["total time"]/total_frames
+        dt = S["total time"]/total_frames
 
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
         ax = fig.add_subplot(1, 1, 1)
@@ -171,25 +171,30 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
 
         #print(total_frames)
-        animation_data = {'t': 0.0, 'x' :x, 'ax':ax ,'frame' : 0}
-        def func_animation(*arg):
-            
-            time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (animation_data['t']/femtoseconds)))
+        animation_data = {'t': 0.0, 'x': x, 'ax': ax, 'frame': 0, 'index': 0}
 
-            animation_data['t'] = animation_data['t'] + dt
-            if animation_data['t'] > js["total time"]:
+        def func_animation(*arg):
+
+            time_ax.set_text(u"t = {} femtoseconds".format(
+                "%.3f" % (animation_data['t']/femtoseconds)))
+
+            if animation_data['t'] > S["total time"]:
                 animation_data['t'] = 0.0
 
-            #print(animation_data['frame'])
-            animation_data['frame'] +=1
-            index = int((js["store steps"])/js["total time"] * animation_data['t'])
+            index = animation_data['index']
+
+            # print(index)
 
             real_plot.set_ydata(np.real(Ψ[index]))
             imag_plot.set_ydata(np.imag(Ψ[index]))
             abs_plot.set_ydata(np.abs(Ψ[index]))
 
+            animation_data['index'] = int(
+            (S["store steps"])/S["total time"] * animation_data['t'])
+            animation_data['frame'] += 1
+            animation_data['t'] += dt
 
-            return real_plot,imag_plot,abs_plot, time_ax
+            return
 
         frame = 0
         ani = animation.FuncAnimation(fig, func_animation,
@@ -197,11 +202,11 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         if save_animation == True:
             if(title == ''):
                 title = "animation"
-            ani.save(js["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
+            ani.save(S["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
         else:
             plt.show()
 
 
 #visualize the time dependent simulation
-animate(xlim=[-15,15], animation_duration = js["animation duration"], fps = js["fps"], save_animation = js["save animation"], title = js["title"])
+animate(xlim=[-15,15], animation_duration = S["animation duration"], fps = S["fps"], save_animation = S["save animation"], title = S["title"])
 

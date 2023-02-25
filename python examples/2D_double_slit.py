@@ -36,7 +36,7 @@ js = {
  "d": 0.5* Å, # slits depth
  "extent": 30 * Å,
  "animation duration": 6, #seconds
- "save animation": False,
+ "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
  "title": "double slit experiment"

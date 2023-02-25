@@ -38,7 +38,7 @@ S = {
     "NW": 60,
     "imaginary time evolution": True,
     "animation duration": 10,  # seconds
-    "save animation": False,
+    "save animation": True,
     "fps": 30,
     "path save": "./gifs/",
     "title": "1D harmonic oscillator imaginary time evolution"
@@ -191,8 +191,6 @@ def differentiate_twice(f):
     f = np.fft.ifftn(-p2*np.fft.fftn(f))
     return f
 
-
-
 hbar = 1.054571817e-34    # Reduced Planck constant in J*s
 m = 9.10938356e-31        # Mass of electron in kg
 m_e = m
@@ -224,7 +222,7 @@ def expectation_value(psi, operator):
 
 
 psi = Ψ
-H_expectation = np.zeros(1)
+H_expectation = []
 for i in (psi):
     H_expectation = np.append(
         H_expectation, expectation_value(i, hamiltonian_operator))
@@ -269,7 +267,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
     total_frames = int(fps * animation_duration)
 
-    dt = S["total time"]/total_frames
+    
 
     fig = plt.figure(figsize=figsize, facecolor='#002b36')
     ax = fig.add_subplot(1, 1, 1)
@@ -288,18 +286,14 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
     time_ax = ax.text(0.97, 0.97, "",  color="white",
                       transform=ax.transAxes, ha="right", va="top")
-    time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (0./femtoseconds)))
+                      
+    energy_ax = ax.text(0.97, 0.07, "", color='white',
+                        transform=ax.transAxes, ha="right", va="top")
 
     plt.xlim(xlim)
     plt.ylim(-1, 1.1)
 
-    energy_ax = ax.text(0.97, 0.07, "", color='white',
-                        transform=ax.transAxes, ha="right", va="top")
-
     index = 0
-
-    energy_ax.set_text(u"energy = {} joules".format(
-        "%.6e" % H_expectation[index]))
 
     potential_plot = ax.plot(x/Å, (V + Vmin)/(Vmax-Vmin), label='$V(x)$')
     real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
@@ -311,33 +305,32 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
     leg = ax.legend(facecolor='#002b36', loc='lower left')
     for line, text in zip(leg.get_lines(), leg.get_texts()):
         text.set_color(line.get_color())
+    
+    dt = S["total time"]/(total_frames)
 
-    animation_data = {'t': 0.0, 'x': x, 'ax': ax, 'frame': 0, 'index': 0}
-
+    xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
+    
+    animation_data = {'t': 0, 'x': x, 'ax': ax, 'index': 0, 'frame': -1}
     def func_animation(*arg):
-
-        time_ax.set_text(u"t = {} femtoseconds".format(
-            "%.3f" % (animation_data['t']/femtoseconds)))
-
-        if animation_data['t'] > S["total time"]:
-            animation_data['t'] = 0.0
 
         index = animation_data['index']
 
         energy_ax.set_text(u"energy = {} joules".format(
             "%.6e" % H_expectation[index]))
-
-        # print(index)
-
+        
+        time_ax.set_text(u"t = {} femtoseconds".format(
+            "%.3f" % (xdt[animation_data['frame']])))
+        
         real_plot.set_ydata(np.real(Ψ[index]))
         imag_plot.set_ydata(np.imag(Ψ[index]))
         abs_plot.set_ydata(np.abs(Ψ[index]))
-
+        
         animation_data['index'] = int(
             (S["store steps"])/S["total time"] * animation_data['t'])
-        animation_data['frame'] += 1
+        
         animation_data['t'] += dt
-
+        animation_data['frame'] += 1
+        
         return
 
     ani = animation.FuncAnimation(fig, func_animation,
