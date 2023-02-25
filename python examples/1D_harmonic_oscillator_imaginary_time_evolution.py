@@ -18,7 +18,7 @@ eV = 0.03674932217565499
 
 n = 2048*2
 
-js = {
+S = {
     "name": "Q0",
     "mode": "two tunnel+-",
     "total time": 0.5 * femtoseconds,
@@ -44,7 +44,7 @@ js = {
     "title": "1D harmonic oscillator imaginary time evolution"
 }
 
-x = np.linspace(-js["extent"]/2, js["extent"]/2, js["N"])
+x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 
 # interaction potential
 
@@ -129,19 +129,19 @@ Vmin = np.amin(V)
 Vmax = np.amax(V)
 
 dx = x[1] - x[0]
-px = np.fft.fftfreq(js["N"], d=dx) * hbar * 2*np.pi
+px = np.fft.fftfreq(S["N"], d=dx) * hbar * 2*np.pi
 p2 = px**2
 
 
-dt_store = js["total time"]/js["store steps"]
-Nt_per_store_step = int(np.round(dt_store / js["dt"]))
+dt_store = S["total time"]/S["store steps"]
+Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 
 dt = dt_store/Nt_per_store_step
 
-Ψ = np.zeros((js["store steps"] + 1, *([js["N"]])), dtype=np.complex128)
+Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype=np.complex128)
 
 m = 1
-if (js["imaginary time evolution"]):
+if (S["imaginary time evolution"]):
     Ur = np.exp(-0.5*(dt/hbar)*V)
     Uk = np.exp(-0.5*(dt/(m*hbar))*p2)
 
@@ -154,36 +154,36 @@ pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
 pyfftw.interfaces.cache.enable()
 
 
-tmp = pyfftw.empty_aligned(js["N"],  dtype='complex128')
-c = pyfftw.empty_aligned(js["N"], dtype='complex128')
+tmp = pyfftw.empty_aligned(S["N"],  dtype='complex128')
+c = pyfftw.empty_aligned(S["N"], dtype='complex128')
 fft_object = pyfftw.FFTW(Ur * tmp, c, direction='FFTW_FORWARD')
 ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 
 
-print("store_steps", js["store steps"])
+print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
-Ψ[0] = norm(initial_wavefunction(js["σ"], js["v0"], js["initial offset"]))
+Ψ[0] = norm(initial_wavefunction(S["σ"], S["v0"], S["initial offset"]))
 phi = [Ψ[0]]
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
 Ψ[0] = norm(Ψ[-1])
 phi.append(Ψ[0])
 
 t0 = time.time()
-if (js["NW"]-1):
-    bar = progressbar.ProgressBar(maxval=js["NW"])
+if (S["NW"]-1):
+    bar = progressbar.ProgressBar(maxval=S["NW"])
 # raising operators
-for _ in bar(range(js["NW"]-1)):
-    ITEnp(phi, js["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+for _ in bar(range(S["NW"]-1)):
+    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
     phi.append(norm(Ψ[-1]))
-if (js["NW"]-1):
+if (S["NW"]-1):
     print("Took", time.time() - t0)
 
 
@@ -192,10 +192,11 @@ def differentiate_twice(f):
     return f
 
 
+
 hbar = 1.054571817e-34    # Reduced Planck constant in J*s
 m = 9.10938356e-31        # Mass of electron in kg
 m_e = m
-V = harmonic_oscillator()
+Ve = harmonic_oscillator()
 
 # Define the Hamiltonian operator
 
@@ -206,7 +207,7 @@ def hamiltonian_operator(psi):
     # K = -(hbar^2 / 2m) * d^2/dx^2
     # KE = (hbar^2 / 2m) * |dpsi/dx|^2
     # Calculate the potential energy part of the Hamiltonian
-    PE = V * psi
+    PE = Ve * psi
     # Combine the kinetic and potential energy parts to obtain the full Hamiltonian
     H = KE + PE
     return H
@@ -252,8 +253,8 @@ def expectation_value2(psi, operator, x_min, x_max, num_points, m, V):
     return expectation
 
 
-x_min = -js["extent"]/2
-x_max = js["extent"]/2
+x_min = -S["extent"]/2
+x_max = S["extent"]/2
 num_points = n
 
 H_expectation2 = expectation_value2(
@@ -268,7 +269,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
     total_frames = int(fps * animation_duration)
 
-    dt = js["total time"]/total_frames
+    dt = S["total time"]/total_frames
 
     fig = plt.figure(figsize=figsize, facecolor='#002b36')
     ax = fig.add_subplot(1, 1, 1)
@@ -318,7 +319,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
         time_ax.set_text(u"t = {} femtoseconds".format(
             "%.3f" % (animation_data['t']/femtoseconds)))
 
-        if animation_data['t'] > js["total time"]:
+        if animation_data['t'] > S["total time"]:
             animation_data['t'] = 0.0
 
         index = animation_data['index']
@@ -333,7 +334,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
         abs_plot.set_ydata(np.abs(Ψ[index]))
 
         animation_data['index'] = int(
-            (js["store steps"])/js["total time"] * animation_data['t'])
+            (S["store steps"])/S["total time"] * animation_data['t'])
         animation_data['frame'] += 1
         animation_data['t'] += dt
 
@@ -344,12 +345,12 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
     if save_animation == True:
         if (title == ''):
             title = "animation"
-        ani.save(js["path save"] + title + '.gif',
+        ani.save(S["path save"] + title + '.gif',
                  fps=fps, metadata=dict(artist='Me'))
     else:
         plt.show()
 
 
 # visualize the time dependent simulation
-animate(xlim=[-js["extent"]/2/Å, js["extent"]/2/Å], animation_duration=js["animation duration"], fps=js["fps"],
-        save_animation=js["save animation"], title=js["title"]+" "+str(js["NW"])+" states")
+animate(xlim=[-S["extent"]/2/Å, S["extent"]/2/Å], animation_duration=S["animation duration"], fps=S["fps"],
+        save_animation=S["save animation"], title=S["title"]+" "+str(S["NW"])+" states")
