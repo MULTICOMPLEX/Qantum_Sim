@@ -54,8 +54,8 @@ def V():
     k = m * w**2
     return 2 * k * x**2
 
-#kinetic energy operator
-def T(σ, v0, offset):
+#initial waveform
+def PSI_0(σ, v0, offset):
     # This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     σ = σ
     v0 = v0 * Å / femtoseconds
@@ -156,7 +156,7 @@ ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
-Ψ[0] = norm(T(S["σ"], S["v0"], S["initial offset"]))
+Ψ[0] = norm(PSI_0(S["σ"], S["v0"], S["initial offset"]))
 phi = [Ψ[0]]
 
 # Define the ground state wave function

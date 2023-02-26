@@ -53,8 +53,8 @@ def V():
     return np.where( ((x < - S["b"]/2 - S["a"]) | (x > S["b"]/2 + S["a"]) | ((x > -S["b"]/2)  
                      & (x < S["b"]/2))) & ((y < S["d"]/2) & (y > -S["d"]/2) ),  S["V0"],  0)
     
-#kinetic energy operator
-def T():
+#initial waveform
+def PSI_0():
     #This wavefunction correspond to a gaussian wavepacket with a mean Y momentum equal to p_y0
     p_y0 = m_e * S["v0"]
     σ = S["σ"]
@@ -82,7 +82,7 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.complex128)
             
-Ψ[0] = T()
+Ψ[0] = PSI_0()
 
 m = 1 
     

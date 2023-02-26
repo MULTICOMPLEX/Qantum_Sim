@@ -63,8 +63,8 @@ def V():
             V += lattice_point(x, y, x_point[i,j], y_point[i,j])
     return V
 
-#kinetic energy operator
-def T():
+#initial waveform
+def PSI_0():
     #This wavefunction correspond to a gaussian wavepacket with a mean Y momentum equal to p_y0
     p_x0 = m_e * S["v0"]
     return np.exp( -1/(4* S["σiw"]**2) * (( x + S["initial wavefunction offset x"] )**2 +
@@ -91,7 +91,7 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.complex128)
             
-Ψ[0] = T()
+Ψ[0] = PSI_0()
 
 m = 1 
     

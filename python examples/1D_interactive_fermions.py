@@ -55,8 +55,8 @@ def V():
 
     return V_harmonic + V_coulomb_interaction
     
-#kinetic energy operator
-def T():
+#initial waveform
+def PSI_0():
     #This wavefunction correspond to two stationary gaussian wavepackets. The wavefunction must be symmetric: Ψ(x1,x2) = Ψ(x2,x1)
     σ = js["σ"]
     𝜇01 = js["𝜇01"]
@@ -88,7 +88,7 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((store_steps + 1, *([js["N"]] * 2)), dtype = np.complex128)
             
-Ψ[0] = T()
+Ψ[0] = PSI_0()
 
 m = 1   
 Ur = np.exp(-0.5j*(dt/hbar)*V)

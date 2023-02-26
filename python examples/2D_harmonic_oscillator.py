@@ -56,8 +56,8 @@ def V():
     return 0.5 * k * x**2    +    0.5 * k * y**2
     
 
-#kinetic energy operator
-def T():
+#initial waveform
+def PSI_0():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     p_x0 = m_e * S["v0"]
     σ = S["σ"]
@@ -82,7 +82,7 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.complex128)
             
-Ψ[0] = T()
+Ψ[0] = PSI_0()
 
 m = 1 
     
