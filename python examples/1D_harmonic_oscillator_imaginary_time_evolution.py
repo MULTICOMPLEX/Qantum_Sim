@@ -117,9 +117,9 @@ def complex_plot(x, phi):
     return
 
 
-
-Vmin = np.amin(V())
-Vmax = np.amax(V())
+V = V()
+Vmin = np.amin(V)
+Vmax = np.amax(V)
 
 dx = x[1] - x[0]
 px = np.fft.fftfreq(S["N"], d=dx) * hbar * 2*np.pi
@@ -135,7 +135,7 @@ dt = dt_store/Nt_per_store_step
 
 m = 1
 if (S["imaginary time evolution"]):
-    Ur = np.exp(-0.5*(dt/hbar)*V())
+    Ur = np.exp(-0.5*(dt/hbar)*V)
     Uk = np.exp(-0.5*(dt/(m*hbar))*p2)
 
 else:
@@ -195,7 +195,7 @@ def hamiltonian_operator(psi):
     # K = -(hbar^2 / 2m) * d^2/dx^2
     # KE = (hbar^2 / 2m) * |dpsi/dx|^2
     # Calculate the potential energy part of the Hamiltonian
-    PE = V() * psi
+    PE = V * psi
     # Combine the kinetic and potential energy parts to obtain the full Hamiltonian
     H = KE + PE
     return H
@@ -249,7 +249,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
     index = 0
     
-    potential_plot = ax.plot(x/Å, (V() + Vmin)/(Vmax-Vmin), label='$V(x)$')
+    potential_plot = ax.plot(x/Å, (V + Vmin)/(Vmax-Vmin), label='$V(x)$')
     real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
     imag_plot, = ax.plot(x/Å, np.imag(Ψ[index]), label='$Im|\psi(x)|$')
     abs_plot, = ax.plot(x/Å, np.abs(Ψ[index]), label='$|\psi(x)|$')
