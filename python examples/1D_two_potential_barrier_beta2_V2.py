@@ -166,7 +166,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         
         time_ax = ax.text(0.97,0.97, "",  color = "white",
                         transform=ax.transAxes, ha="right", va="top")
-        time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (0./femtoseconds)))
+       
 
         plt.ylim(-1, 1)
 
@@ -185,32 +185,22 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
                text.set_color(line.get_color())
 
 
-        #print(total_frames)
-        animation_data = {'t': 0.0, 'x': x, 'ax': ax, 'frame': 0, 'index': 0}
-        def func_animation(*arg):
+        xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
+        psi_index = np.linspace(0, S["store steps"]-1, total_frames)
+        
+        def func_animation(frame):
+            
+            index = int(psi_index[frame])
 
-            time_ax.set_text(u"t = {} femtoseconds".format(
-                "%.3f" % (animation_data['t']/femtoseconds)))
-
-            if animation_data['t'] > S["total time"]:
-                animation_data['t'] = 0.0
-
-            index = animation_data['index']
-
-            # print(index)
-
+            time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
+        
             real_plot.set_ydata(np.real(Ψ[index]))
             imag_plot.set_ydata(np.imag(Ψ[index]))
             abs_plot.set_ydata(np.abs(Ψ[index]))
+               
+            return 
 
-            animation_data['index'] = int(
-            (S["store steps"])/S["total time"] * animation_data['t'])
-            animation_data['frame'] += 1
-            animation_data['t'] += dt
-
-            return
-
-        frame = 0
+  
         ani = animation.FuncAnimation(fig, func_animation,
                                     blit=False, frames=total_frames, interval= 1/fps * 1000)
         if save_animation == True:
