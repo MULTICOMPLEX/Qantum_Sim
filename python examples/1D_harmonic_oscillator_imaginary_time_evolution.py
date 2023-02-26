@@ -197,8 +197,6 @@ m_e = m
 Ve = harmonic_oscillator()
 
 # Define the Hamiltonian operator
-
-
 def hamiltonian_operator(psi):
     # Calculate the kinetic energy part of the Hamiltonian
     KE = -(hbar**2 / 2*m) * differentiate_twice(psi)
@@ -211,53 +209,18 @@ def hamiltonian_operator(psi):
     return H
 
 
-def x_operator(psi, x):
-    return x * psi
-
-
 def expectation_value(psi, operator):
     operator_values = operator(psi)
     expectation = np.sum(np.abs(operator_values)**2) * dx
     return expectation
 
-
-psi = Ψ
 H_expectation = []
-for i in (psi):
+for i in (Ψ):
     H_expectation = np.append(
         H_expectation, expectation_value(i, hamiltonian_operator))
 
 print("\nenergy =\n", H_expectation.reshape(-1, 1))
-energy = H_expectation[-1]
 
-psi = Ψ[-1]
-
-
-def hamiltonian_operator2(psi, x, m, V):
-    dx = x[1] - x[0]
-    psi_x_plus = np.roll(psi, -1)  # Shift psi(x) to the right
-    psi_x_minus = np.roll(psi, 1)  # Shift psi(x) to the left
-    kinetic_term = -(hbar**2 / 2*m) * (psi_x_minus -
-                                       2 * psi + psi_x_plus) / dx**2
-    potential_term = V * psi
-    return kinetic_term + potential_term
-
-
-def expectation_value2(psi, operator, x_min, x_max, num_points, m, V):
-    x_values = np.linspace(x_min, x_max, num_points)
-    dx = x_values[1] - x_values[0]
-    operator_values = operator(psi, x_values, m, V)
-    expectation = np.sum(np.abs(operator_values)**2) * dx
-    return expectation
-
-
-x_min = -S["extent"]/2
-x_max = S["extent"]/2
-num_points = n
-
-H_expectation2 = expectation_value2(
-    psi, hamiltonian_operator2, x_min, x_max, num_points, m, V)
-# print("energy", H_expectation2)
 
 Ψ /= np.amax(np.abs(Ψ))
 
