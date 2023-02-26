@@ -24,7 +24,7 @@ S = {
     "total time": 0.5 * femtoseconds,
     "store steps": 20,
     "σ": 0.7 * Å,
-    "v0": 60,  # initial_wavefunction momentum
+    "v0": 60,  # T momentum
     "V0": 2,  # barrier voltage
     "initial offset": 0,
     "N": n,
@@ -46,22 +46,16 @@ S = {
 
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 
-# interaction potential
-
-
-def harmonic_oscillator():
+#potential energy operator
+def V():
     m = m_e
     T = 0.6*femtoseconds
     w = 2*np.pi/T
     k = m * w**2
     return 2 * k * x**2
 
-# =========================================================================================================#
-# Define the wavefunction at t = 0  (initial condition)
-# =========================================================================================================#
-
-
-def initial_wavefunction(σ, v0, offset):
+#kinetic energy operator
+def T(σ, v0, offset):
     # This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     σ = σ
     v0 = v0 * Å / femtoseconds
@@ -123,10 +117,9 @@ def complex_plot(x, phi):
     return
 
 
-V = harmonic_oscillator()
 
-Vmin = np.amin(V)
-Vmax = np.amax(V)
+Vmin = np.amin(V())
+Vmax = np.amax(V())
 
 dx = x[1] - x[0]
 px = np.fft.fftfreq(S["N"], d=dx) * hbar * 2*np.pi
@@ -142,11 +135,11 @@ dt = dt_store/Nt_per_store_step
 
 m = 1
 if (S["imaginary time evolution"]):
-    Ur = np.exp(-0.5*(dt/hbar)*V)
+    Ur = np.exp(-0.5*(dt/hbar)*V())
     Uk = np.exp(-0.5*(dt/(m*hbar))*p2)
 
 else:
-    Ur = np.exp(-0.5j*(dt/hbar)*V)
+    Ur = np.exp(-0.5j*(dt/hbar)*V())
     Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
 
 # Configure PyFFTW to use all cores (the default is single-threaded)
@@ -163,7 +156,7 @@ ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
-Ψ[0] = norm(initial_wavefunction(S["σ"], S["v0"], S["initial offset"]))
+Ψ[0] = norm(T(S["σ"], S["v0"], S["initial offset"]))
 phi = [Ψ[0]]
 
 # Define the ground state wave function
@@ -194,7 +187,6 @@ def differentiate_twice(f):
 hbar = 1.054571817e-34    # Reduced Planck constant in J*s
 m = 9.10938356e-31        # Mass of electron in kg
 m_e = m
-Ve = harmonic_oscillator()
 
 # Define the Hamiltonian operator
 def hamiltonian_operator(psi):
@@ -203,7 +195,7 @@ def hamiltonian_operator(psi):
     # K = -(hbar^2 / 2m) * d^2/dx^2
     # KE = (hbar^2 / 2m) * |dpsi/dx|^2
     # Calculate the potential energy part of the Hamiltonian
-    PE = Ve * psi
+    PE = V() * psi
     # Combine the kinetic and potential energy parts to obtain the full Hamiltonian
     H = KE + PE
     return H
@@ -225,6 +217,7 @@ print("\nenergy =\n", H_expectation.reshape(-1, 1))
 Ψ /= np.amax(np.abs(Ψ))
 
 
+
 def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5, fps=20, save_animation=False,
             title="1D potential barrier"):
 
@@ -233,7 +226,6 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
     fig = plt.figure(figsize=figsize, facecolor='#002b36')
     ax = fig.add_subplot(1, 1, 1)
-    index = 0
 
     ax.set_xlabel("[Å]")
     ax.set_title("$\psi(x,t)$"+" "+title, color='white')
@@ -256,8 +248,8 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
     plt.ylim(-1, 1.1)
 
     index = 0
-
-    potential_plot = ax.plot(x/Å, (V + Vmin)/(Vmax-Vmin), label='$V(x)$')
+    
+    potential_plot = ax.plot(x/Å, (V() + Vmin)/(Vmax-Vmin), label='$V(x)$')
     real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
     imag_plot, = ax.plot(x/Å, np.imag(Ψ[index]), label='$Im|\psi(x)|$')
     abs_plot, = ax.plot(x/Å, np.abs(Ψ[index]), label='$|\psi(x)|$')

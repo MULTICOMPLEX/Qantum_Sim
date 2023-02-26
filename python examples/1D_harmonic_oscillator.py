@@ -48,19 +48,17 @@ S = {
 
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 
-#interaction potential
-def harmonic_oscillator():
+#potential energy operator
+def V():
     m = m_e
     T = 0.6*femtoseconds
     w = 2*np.pi/T
     k = m* w**2
     return 0.5 * k * x**2 
 
-#=========================================================================================================#
-# Define the wavefunction at t = 0  (initial condition)
-#=========================================================================================================#
 
-def initial_wavefunction():
+#kinetic energy operator
+def T():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     σ = 0.7 * Å
     v0 = 60 * Å / femtoseconds
@@ -68,10 +66,10 @@ def initial_wavefunction():
     return np.exp( -1/(4* σ**2) * ((x-0)**2) / np.sqrt(2*np.pi* σ**2))  *np.exp(p_x0*x*1j)
 
  
-Vgrid = harmonic_oscillator()
+V = V()
  
-Vmin = np.amin(Vgrid)
-Vmax = np.amax(Vgrid)
+Vmin = np.amin(V)
+Vmax = np.amax(V)
 
 dx = x[1] - x[0]
 px = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
@@ -86,10 +84,10 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype = np.complex128)
             
-Ψ[0] = np.array(initial_wavefunction())
+Ψ[0] = np.array(T())
  
 m = 1     
-Ur = np.exp(-0.5j*(dt/hbar)*Vgrid)
+Ur = np.exp(-0.5j*(dt/hbar)*V)
 Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
@@ -127,8 +125,6 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
     title = "1D potential barrier"):
     
         total_frames = int(fps * animation_duration)
-       
-        dt = S["total time"]/total_frames
 
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
         ax = fig.add_subplot(1, 1, 1)
@@ -157,7 +153,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
         index = 0
         
-        potential_plot = ax.plot(x/Å, (Vgrid + Vmin)/(Vmax-Vmin), label='$V(x)$')  
+        potential_plot = ax.plot(x/Å, (V + Vmin)/(Vmax-Vmin), label='$V(x)$')  
         real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
         imag_plot, = ax.plot(x/Å, np.imag(Ψ[index]), label='$Im|\psi(x)|$')
         abs_plot, = ax.plot(x/Å, np.abs(Ψ[index]), label='$|\psi(x)|$')

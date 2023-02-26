@@ -44,7 +44,8 @@ x1 = np.linspace(-js["extent"]/2, js["extent"]/2, js["N"])
 x2 = np.linspace(-js["extent"]/2, js["extent"]/2, js["N"])
 x1, x2 = np.meshgrid(x1, x2)
 
-def harmonic_oscillator_plus_coulomb_interaction():
+#potential energy operator
+def V():
     k = 0.5
     V_harmonic = 0.5*k*x1**2 + 0.5*k*x2**2
     k = 30.83
@@ -54,8 +55,8 @@ def harmonic_oscillator_plus_coulomb_interaction():
 
     return V_harmonic + V_coulomb_interaction
     
-    
-def initial_wavefunction():
+#kinetic energy operator
+def T():
     #This wavefunction correspond to two stationary gaussian wavepackets. The wavefunction must be symmetric: Ψ(x1,x2) = Ψ(x2,x1)
     σ = js["σ"]
     𝜇01 = js["𝜇01"]
@@ -65,9 +66,9 @@ def initial_wavefunction():
             + np.exp(-(x1 - 𝜇02)**2/(4*σ**2))*np.exp(-(x2 - 𝜇01)**2/(4*σ**2)))
     
 
-Vgrid = harmonic_oscillator_plus_coulomb_interaction() 
-Vmin = np.amin(Vgrid)
-Vmax = np.amax(Vgrid)
+V = V() 
+Vmin = np.amin(V)
+Vmax = np.amax(V)
 
 dx = x1[0][1] - x1[0][0]
 p1 = np.fft.fftfreq(js["N"], d = dx) * hbar  * 2*np.pi
@@ -87,10 +88,10 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((store_steps + 1, *([js["N"]] * 2)), dtype = np.complex128)
             
-Ψ[0] = np.array(initial_wavefunction())
+Ψ[0] = T()
 
 m = 1   
-Ur = np.exp(-0.5j*(dt/hbar)*Vgrid)
+Ur = np.exp(-0.5j*(dt/hbar)*V)
 Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
@@ -154,7 +155,7 @@ def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0) -> np.ndarray:
     h = (arg + np.pi)  / (2 * np.pi)
     s = np.ones(h.shape)
     v = np.ones(h.shape)  #alpha
-    rgb = hsv_to_rgb(   np.moveaxis(np.array([h,s,v]) , 0, -1)  ) # --> tuple
+    rgb = hsv_to_rgb( np.moveaxis(np.array([h,s,v]) , 0, -1) ) # --> tuple
 
     abs_z = np.abs(Z)/ max_val
     abs_z = np.where(abs_z> 1., 1. ,abs_z)
@@ -194,7 +195,6 @@ def plot(t, xlim=None, figsize=(10, 5), potential_saturation=0.8, wavefunction_s
         time_ax.set_text(u"t = {} femtoseconds".format("%.2f"  % (t/femtoseconds)))
 
 
-
         if xlim != None:
             ax1.set_xlim(np.array(xlim)/Å)
             ax1.set_ylim(np.array(xlim)/Å)
@@ -204,8 +204,7 @@ def plot(t, xlim=None, figsize=(10, 5), potential_saturation=0.8, wavefunction_s
         index = int((store_steps)/ js["total time"] *t)
         
         L = js["extent"] / Å
-       
-           
+        
         
         ax1.xaxis.label.set_color('white')
         ax1.yaxis.label.set_color('white')
@@ -234,7 +233,7 @@ def plot(t, xlim=None, figsize=(10, 5), potential_saturation=0.8, wavefunction_s
         ax2.spines['right'].set_linewidth(1)   
         
         
-        ax1.imshow((Vgrid + Vmin)/(Vmax-Vmin), 
+        ax1.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp2, origin = "lower", interpolation = "bilinear", 
         extent = [-L/2, L/2, -L/2, L/2])  
 
@@ -272,7 +271,7 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
         
         L = js["extent"] / Å
         
-        potential_plot = ax1.imshow((Vgrid + Vmin)/(Vmax-Vmin), 
+        potential_plot = ax1.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", interpolation = "bilinear", extent = [-L/2, L/2, -L/2, L/2])  
         
         wavefunction_plot = ax1.imshow(complex_to_rgba(Ψ_plot[0], 

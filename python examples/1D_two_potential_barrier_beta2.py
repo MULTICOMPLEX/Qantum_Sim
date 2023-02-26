@@ -51,9 +51,8 @@ S = {
 x = np.linspace(S["extentN"], S["extentP"], S["N"])
 
 
-
-#interaction potential
-def potential_barrier():
+#potential energy operator
+def V():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0    
     a = 1 * Å 
     barrier = np.where(((x > S["x0"]* Å  - a/2) & (x < S["x0"]* Å  + a/2)), S["V0"], 0)
@@ -61,19 +60,17 @@ def potential_barrier():
     return barrier
 
 
-#wavefunction at t = 0. 
-def initial_wavefunction(offset = -15, v0 = 40):
+#kinetic energy operator
+def T(offset = -15, v0 = 40):
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     offset = -offset
     v0 *= Å / femtoseconds
     p_x0 = m_e * v0 
     return np.exp( -1/(4* S["σ"]**2) * ((x + offset)**2) / np.sqrt(2*np.pi* S["σ"]**2))  *np.exp(p_x0*x*1j)
 
- 
-Vgrid = potential_barrier()
- 
-Vmin = np.amin(Vgrid)
-Vmax = np.amax(Vgrid)
+V = V()
+Vmin = np.amin(V)
+Vmax = np.amax(V)
 
 dx = x[1] - x[0]
 px = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
@@ -89,10 +86,10 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype = np.complex128)
             
-Ψ[0] = np.array(initial_wavefunction(S["initial offset"], S["beta2"]))
+Ψ[0] = T(S["initial offset"], S["beta2"])
  
 m = 1     
-Ur = np.exp(-0.5j*(dt/hbar)*np.array(Vgrid)) 
+Ur = np.exp(-0.5j*(dt/hbar)*V) 
 Uk = np.exp(-0.5j*(dt/(m*hbar))*p2) 
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
@@ -138,14 +135,11 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
     title = "1D potential barrier"):
     
         total_frames = int(fps * animation_duration)
-       
-        dt = S["total time"]/total_frames
 
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
         ax = fig.add_subplot(1, 1, 1)
-        index = 0
-        
-        
+
+       
         ax.set_xlabel("[Å]")
         ax.set_title("$\psi(x,t)$"+" "+title, color = 'white')
         
@@ -172,7 +166,6 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
         index = 0
         
-
         real_plot, = ax.plot(x/Å, np.real(Ψ[index]), label='$Re|\psi(x)|$')
         imag_plot, = ax.plot(x/Å, np.imag(Ψ[index]), label='$Im|\psi(x)|$')
         abs_plot, = ax.plot(x/Å, np.abs(Ψ[index]), label='$|\psi(x)|$')
@@ -191,7 +184,6 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         def func_animation(frame):
             
             index = int(psi_index[frame])
-
             time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
         
             real_plot.set_ydata(np.real(Ψ[index]))

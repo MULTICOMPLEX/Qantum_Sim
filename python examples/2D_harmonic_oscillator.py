@@ -44,8 +44,8 @@ x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 x, y = np.meshgrid(x,y)
 
-#interaction potential
-def harmonic_oscillator():
+#potential energy operator
+def V():
     m = m_e
     T = 0.5*femtoseconds
     w = 2*np.pi/T
@@ -55,21 +55,18 @@ def harmonic_oscillator():
 
     return 0.5 * k * x**2    +    0.5 * k * y**2
     
-    
-#=========================================================================================================#
-# Define the wavefunction at t = 0  (initial condition)
-#=========================================================================================================#
 
-def initial_wavefunction():
+#kinetic energy operator
+def T():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     p_x0 = m_e * S["v0"]
     σ = S["σ"]
     return np.exp( -1/(4* σ**2) * ((x-0)**2+(y-0)**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
     
 
-Vgrid = harmonic_oscillator() 
-Vmin = np.amin(Vgrid)
-Vmax = np.amax(Vgrid)
+V = V() 
+Vmin = np.amin(V)
+Vmax = np.amax(V)
 
 dx = x[0][1] - x[0][0]
 p1 = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
@@ -85,11 +82,11 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.complex128)
             
-Ψ[0] = np.array(initial_wavefunction())
+Ψ[0] = T()
 
 m = 1 
     
-Ur = np.exp(-0.5j*(dt/hbar)*Vgrid)
+Ur = np.exp(-0.5j*(dt/hbar)*V)
 Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
@@ -161,9 +158,9 @@ def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0) -> np.ndarray:
 
 def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 20, save_animation = False, 
     potential_saturation=0.8, title = "double slit experiment", wavefunction_saturation=0.8):
+        
         total_frames = int(fps * animation_duration)
-        dt = S["total time"]/total_frames
-       
+        
         px = 1 / plt.rcParams['figure.dpi']
         figsize = (640*px, 640*px)
         
@@ -198,7 +195,7 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
                 
 
         L = S["extent"] / Å
-        potential_plot = ax.imshow((Vgrid + Vmin)/(Vmax-Vmin), 
+        potential_plot = ax.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
         interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])
         
@@ -228,13 +225,10 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
         def func_animation(frame):
             
             time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
-
-            
             index = int(psi_index[frame])
-            
-            
             wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
-            return potential_plot,wavefunction_plot, time_ax
+            
+            return wavefunction_plot, time_ax
 
 
         ani = animation.FuncAnimation(fig, func_animation,
