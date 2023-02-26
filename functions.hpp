@@ -319,22 +319,16 @@ for line, text in zip(leg.get_lines(), leg.get_texts()) :\
 
 		plot.Py_STR("time_ax = ax.text(0.97, 0.97, \"\", color = \"white\",\
 			transform = ax.transAxes, ha = \"right\", va = \"top\")");
-		plot.Py_STR("time_ax.set_text(u\"t = {} femtoseconds\".format(\"%.3f\" % (0. / femtoseconds)))");
-
-		plot.Py_STR("animation_data = { 't': 0.0, 'x' : x, 'ax' : ax , 'frame' : 0, 'index': 0 }");
-
-		plot.Py_STR("def func_animation(*arg) :\n\
-		time_ax.set_text(u\"t = {} femtoseconds\".format(\" % .3f\"  % (animation_data['t']/femtoseconds)))\n\
-		if animation_data['t'] > total_time:\n\
-			animation_data['t'] = 0.0\n\
-		index = animation_data['index']\n\
+		plot.Py_STR("xdt = np.linspace(0, " + std::to_string(js["total time"].get<double>()) + " / femtoseconds, total_frames)");
+		plot.Py_STR("psi_index = np.linspace(0, " + std::to_string(js["store steps"].get<int>()-1) + ", total_frames)");
+		plot.Py_STR("def func_animation(frame) :\n\
+		index = int(psi_index[frame])\n\
+		time_ax.set_text(u\"t = {} femtoseconds\".format(\" % .3f\" % (xdt[frame])))\n\
 		real_plot.set_ydata(np.real(psi[index]))\n\
 		imag_plot.set_ydata(np.imag(psi[index]))\n\
 		abs_plot.set_ydata(np.abs(psi[index]))\n\
-		animation_data['index'] = int((store_steps) / total_time * animation_data['t'])\n\
-		animation_data['frame'] += 1\n\
-		animation_data['t'] += dt\n\
 		return");
+		
 		
 		plot.Py_STR("from matplotlib import animation");
 		plot.Py_STR("a = animation.FuncAnimation(fig, func_animation, \

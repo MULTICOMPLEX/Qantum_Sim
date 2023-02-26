@@ -149,7 +149,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
         
         time_ax = ax.text(0.97,0.97, "",  color = "white",
                         transform=ax.transAxes, ha="right", va="top")
-        time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (0./femtoseconds)))
+
 
         plt.xlim(xlim)
         plt.ylim(-1, 1)
@@ -171,7 +171,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
 
         xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
-        psi_index = np.linspace(0, S["store steps"], total_frames)
+        psi_index = np.linspace(0, S["store steps"]-1, total_frames)
         
         def func_animation(frame):
             
@@ -185,7 +185,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
                
             return 
 
-        frame = 0
+       
         ani = animation.FuncAnimation(fig, func_animation,
                                     blit=False, frames=total_frames, interval= 1/fps * 1000)
         if save_animation == True:
