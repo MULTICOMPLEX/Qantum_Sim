@@ -22,21 +22,21 @@ n = 256
 
 
 S = {
- "total time": 1.5 * femtoseconds,
- "store steps": 200,
+ "total time": 1 * femtoseconds,
+ "store steps": 70,
  "σ": 1.0 * Å, #
  "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum
  "V0": 1e5, #barrier voltage 
  "initial wavefunction offset x": 0,
- "initial wavefunction offset y": 0,
+ "initial wavefunction offset y": 5.0*Å,
  "N": n,
- "dt": 4 / (np.log(n) * np.sqrt(2 * n)),
+ "dt": 0.25,
  "extent": 30 * Å,
  "animation duration": 6, #seconds
  "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
- "title": "2D harmonic oscillator electric field"
+ "title": "2D cyclotron orbit magneticfield"
 }
 
 
@@ -44,30 +44,30 @@ x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 x, y = np.meshgrid(x,y)
 
+
+Bz = np.zeros_like(x)+0
+
 #potential energy operator
 def V():
     m = m_e
     T = 0.5*femtoseconds
     w = 2*np.pi/T
     k = m* w**2
+  
     print("oscillation_amplitude ", np.sqrt(m/k) * S["v0"]/Å, " amstrongs")
-    return 0.5 * k * x**2 + 0.5 * k * y**2
-    
-    
-# Electric field strength
-E = 1e20 # in V/m
-q = 1.602e-19 # charge of electron in C
 
+    return 0.5 * k * x**2    +    0.5 * k * y**2 + Bz
+    
 #initial waveform
 def PSI_0():
-    #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
-    p_x0 = m_e * S["v0"] - q*E*S["initial wavefunction offset x"]*dt/hbar
-    σ = S["σ"]
-    return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2 +
+    σ = 1.0 * Å
+    v0 = 80 * Å / femtoseconds
+    p_x0 = m_e * v0
+    return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
     (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
 
 
-V = V()
+V = V() 
 Vmin = np.amin(V)
 Vmax = np.amax(V)
 
@@ -77,7 +77,6 @@ p2 = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
 p1, p2 = np.meshgrid(p1, p2)
 p2 = (p1**2 + p2**2)
 
-        
 dt_store = S["total time"] / S["store steps"]
 
 Nt_per_store_step = int(np.round(dt_store / S["dt"]))
@@ -92,14 +91,14 @@ dt = dt_store/Nt_per_store_step
 m = 1 
 
 # Add electric field term to the time evolution operator
- 
-Ur = np.exp(-0.5j*(dt/hbar)*(V-q*E*x*dt/hbar))
-Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
+Ur = np.exp(-0.5j * (dt / hbar) * V)
+Uk = np.exp(-0.5j * (dt / (m * hbar)) * p2)  # update Uk with the new momentum
+#Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
 pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
 pyfftw.interfaces.cache.enable()
-
+scipy.fft.set_backend(pyfftw.interfaces.scipy_fft)
     
            
 tmp = pyfftw.empty_aligned((S["N"], S["N"]), dtype='complex128')
@@ -172,7 +171,7 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
         px = 1 / plt.rcParams['figure.dpi']
         figsize = (640*px, 640*px)
         
-      
+        
         viridis = cm.get_cmap('gray', 256)
         newcolors = viridis(np.linspace(0, 1, 256))
         mc = np.array([0, 43/256, 54/256, 1])
@@ -184,6 +183,7 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
        
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
       
+        
         ax = fig.add_subplot(1, 1, 1)
         
         ax.xaxis.label.set_color('white')
@@ -198,8 +198,8 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
         ax.spines['bottom'].set_linewidth(1)
         ax.spines['top'].set_linewidth(1)
         ax.spines['right'].set_linewidth(1)              
-                
-
+        
+        
         L = S["extent"] / Å
         potential_plot = ax.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
@@ -214,7 +214,8 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
             ax.set_xlim(np.array(xlim)/Å)
         if ylim != None:
             ax.set_ylim(np.array(ylim)/Å)
-  
+
+        
 
         ax.set_title("$\psi(x,y,t)$"+" "+title, color = "white")
         ax.set_xlabel('[Å]')
@@ -222,14 +223,14 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
 
         time_ax = ax.text(0.97,0.97, "",  color = "white",
                         transform=ax.transAxes, ha="right", va="top", alpha=0.9)
-
+        
 
         xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
         psi_index = np.linspace(0, S["store steps"]-1, total_frames)
         
         def func_animation(frame):
             
-            time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
+            time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))            
             index = int(psi_index[frame])
             wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
             
