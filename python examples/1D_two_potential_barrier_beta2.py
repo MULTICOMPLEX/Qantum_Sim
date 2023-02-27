@@ -179,7 +179,7 @@ def animate(xlim=None, figsize=(16/9 *5.804 * 0.9, 5.804), animation_duration = 
 
 
         xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
-        psi_index = np.linspace(0, S["store steps"]-1, total_frames)
+        psi_index = np.linspace(0, S["store steps"], total_frames)
         
         def func_animation(frame):
             
