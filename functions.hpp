@@ -35,7 +35,7 @@ public:
 	//"capacitor", simulate capacitor
 	//"free", no barrier
 
-	json js = {
+	json S = {
 	{"name", "Q0"},
 	{"mode", "two tunnel+-"},
 	{"total time", 1.5 * qc::femtoseconds},
@@ -59,8 +59,8 @@ public:
 	{"path save", "../gifs/"}
 	};
 
-	const double dt_store = js["total time"].get<double>() / js["store steps"].get<int>();
-	const int Nt_per_store_step = int(round(dt_store / js["dt"].get<double>()));
+	const double dt_store = S["total time"].get<double>() / S["store steps"].get<int>();
+	const int Nt_per_store_step = int(round(dt_store / S["dt"].get<double>()));
 
 	fftwf_plan planf;
 	fftwf_plan planr;
@@ -77,8 +77,8 @@ public:
 	Quantum()
 	{
 
-		sav_settings(js, js["name"]);
-		get_settings(js, js["name"]);
+		sav_settings(S, S["name"]);
+		get_settings(S, S["name"]);
 
 		//mxws<uint32_t> rng;
 		//std::vector<double> w(N, 0), x(N * 2, 0), y(N * 2, 0);
@@ -87,27 +87,27 @@ public:
 		planf = fftwf_plan_dft_1d(N, xtw, ytw, FFTW_FORWARD, FFTW_ESTIMATE);
 		planr = fftwf_plan_dft_1d(N, xtw, ytw, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-		psi.resize(js["store steps"]);
+		psi.resize(S["store steps"]);
 
-		const std::vector<double> X = linspace(js["extentN"], js["extentP"], N);
-		const std::vector<double> Vgrid = potential_barrier(X, js["x0"], js["x1"], js["x2"]);
+		const std::vector<double> X = linspace(S["extentN"], S["extentP"], N);
+		const std::vector<double> Vgrid = potential_barrier(X, S["x0"], S["x1"], S["x2"]);
 
 		const auto dx = X[1] - X[0];
-		const std::vector<double> FFTfreq = init_fftfreq(js["N"], dx, qc::hbar);
+		const std::vector<double> FFTfreq = init_fftfreq(S["N"], dx, qc::hbar);
 
-		psi[0] = initial_wavefunction(X, js["sigma"], js["v0"], js["initial offset"]);
+		psi[0] = initial_wavefunction(X, S["sigma"], S["v0"], S["initial offset"]);
 
 		std::vector<Complex> Ur(Vgrid.size()), Uk(FFTfreq.size());
 		auto m = 1.;
-		init_Uk_Ur(Vgrid, FFTfreq, Ur, Uk, js["dt"], js["imaginary time evolution"], m);
+		init_Uk_Ur(Vgrid, FFTfreq, Ur, Uk, S["dt"], S["imaginary time evolution"], m);
 
 		//std::cout << "Error O(dt^3) = " << pow(dt, 3) << std::endl;
-		std::cout << "store steps " << js["store steps"] << std::endl;
+		std::cout << "store steps " << S["store steps"] << std::endl;
 		std::cout << "Nt_per_store_step " << Nt_per_store_step << std::endl;
 
 		auto begin = clock::now();
 
-		for (auto i = 1; i < js["store steps"]; i++) {
+		for (auto i = 1; i < S["store steps"]; i++) {
 
 			auto tmp = psi[i - 1ull];
 			for (auto j = 0; j < Nt_per_store_step; j++) {
@@ -116,7 +116,7 @@ public:
 				//SSFFT(Ur, Uk, tmp, x, y, w);
 				SSFFTW<float>(Ur, Uk, tmp);
 
-				if (js["imaginary time evolution"])
+				if (S["imaginary time evolution"])
 					tmp /= amax(tmp);
 			}
 			psi[i] = tmp;
@@ -129,7 +129,7 @@ public:
 
 		psi /= amax(psi);
 
-		plotPSI(X, js["save animation"]);
+		plotPSI(X, S["save animation"]);
 
 	}
 
@@ -171,37 +171,37 @@ public:
 		plot.Py_STR("figsize = (900*px, 556*px)");
 		plot.Py_STR("fig = plt.figure(figsize = figsize, facecolor='#002b36')");
 
-		auto a = std::to_string(js["x0"] - 0.5);
+		auto a = std::to_string(S["x0"] - 0.5);
 		a += ",";
-		a += std::to_string(js["x0"] + 0.5);
-		auto b = std::to_string(js["x1"] - 0.5);
+		a += std::to_string(S["x0"] + 0.5);
+		auto b = std::to_string(S["x1"] - 0.5);
 		b += ",";
-		b += std::to_string(js["x1"] + 0.5);
-		auto c = std::to_string(js["x2"] - 0.5);
+		b += std::to_string(S["x1"] + 0.5);
+		auto c = std::to_string(S["x2"] - 0.5);
 		c += ",";
-		c += std::to_string(js["x2"] + 0.5);
+		c += std::to_string(S["x2"] + 0.5);
 
 		plot.Py_STR("ax = plt.gca()");
 
-		auto aa = std::to_string(js["x0"] - 2.5);
+		auto aa = std::to_string(S["x0"] - 2.5);
 
-		if (js["mode"] == "tunnel+") {
+		if (S["mode"] == "tunnel+") {
 			plot.Py_STR("plt.axvspan(" + a + ", alpha = 0.5, color = 'red')");
 			plot.Py_STR("plt.text(" + aa + ", 0.95, '+', horizontalalignment='center',\
 				verticalalignment = 'center', color = 'red')");
 		}
 
-		if (js["mode"] == "tunnel-") {
+		if (S["mode"] == "tunnel-") {
 			plot.Py_STR("plt.axvspan(" + a + ", alpha = 0.5, color = 'gray')");
 			plot.Py_STR("plt.text(" + aa + ", 0.95, '-', horizontalalignment='center',\
 				verticalalignment = 'center', color = 'gray')");
 		}
 
-		auto ab = std::to_string(js["x1"] + 2.5);
-		auto ac = std::to_string(js["x2"] + 2.5);
+		auto ab = std::to_string(S["x1"] + 2.5);
+		auto ac = std::to_string(S["x2"] + 2.5);
 
 
-		if (js["mode"] == "two tunnel+") {
+		if (S["mode"] == "two tunnel+") {
 			plot.Py_STR("plt.axvspan(" + a + ", alpha = 0.5, color = 'red')");
 			plot.Py_STR("plt.text(" + aa + ", 0.95, '+', horizontalalignment='center',\
 				verticalalignment = 'center', color = 'red')");
@@ -211,7 +211,7 @@ public:
 				verticalalignment = 'center', color = 'red')");
 		}
 
-		if (js["mode"] == "two tunnel+-") {
+		if (S["mode"] == "two tunnel+-") {
 			plot.Py_STR("plt.axvspan(" + a + ", alpha = 0.5, color = 'red')");
 			plot.Py_STR("plt.text(" + aa + ", 0.95, '+', horizontalalignment='center',\
 				verticalalignment = 'center', color = 'red')");
@@ -221,7 +221,7 @@ public:
 				verticalalignment = 'center', color = 'gray')");
 		}
 
-		if (js["mode"] == "diode") {
+		if (S["mode"] == "diode") {
 			plot.Py_STR("plt.axvspan(" + a + ", alpha = 0.5, color = 'red')");
 
 			plot.Py_STR("plt.text(" + aa + ", 0.95, '+', horizontalalignment='center',\
@@ -239,7 +239,7 @@ public:
 
 		}
 
-		if (js["mode"] == "capacitor") { //or tunnel two barrier
+		if (S["mode"] == "capacitor") { //or tunnel two barrier
 			plot.Py_STR("plt.axvspan(" + a + ", alpha = 0.5, color = 'gray')");
 			plot.Py_STR("plt.text(" + aa + ", 0.95, '-', horizontalalignment='center',\
 				verticalalignment = 'center', color = 'gray')");
@@ -264,25 +264,25 @@ public:
 
 		std::string title = "$\\psi(x,t)$ ";
 
-		if (js["mode"] == "tunnel+")
+		if (S["mode"] == "tunnel+")
 			title += "tunnel+";
 
-		if (js["mode"] == "tunnel-")
+		if (S["mode"] == "tunnel-")
 			title += "tunnel-";
 
-		if (js["mode"] == "two tunnel+")
+		if (S["mode"] == "two tunnel+")
 			title += "two tunnel+";
 
-		if (js["mode"] == "two tunnel+-")
+		if (S["mode"] == "two tunnel+-")
 			title += "two tunnel+-";
 
-		if (js["mode"] == "diode")
+		if (S["mode"] == "diode")
 			title += "diode";
 
-		if (js["mode"] == "capacitor")
+		if (S["mode"] == "capacitor")
 			title += "capacitor";
 
-		if (js["mode"] == "free")
+		if (S["mode"] == "free")
 			title += "";
 
 		plot.Py_STR("ax.set_title(\"" + title + "\", color = 'white')");
@@ -308,19 +308,19 @@ for line, text in zip(leg.get_lines(), leg.get_texts()) :\
 
 		plot.Py_STR("femtoseconds = 4.134137333518212 * 10.");
 
-		plot.Py_STR("animation_duration = " + std::to_string(js["animation duration"].get<double>()) + "");
+		plot.Py_STR("animation_duration = " + std::to_string(S["animation duration"].get<double>()) + "");
 
-		plot.Py_STR("fps = " + std::to_string(js["fps"].get<int>()) + "");
+		plot.Py_STR("fps = " + std::to_string(S["fps"].get<int>()) + "");
 
 		plot.Py_STR("total_frames = int(fps * animation_duration)");
 
-		plot.Py_STR("total_time = " + std::to_string(js["total time"].get<double>()) + "");
+		plot.Py_STR("total_time = " + std::to_string(S["total time"].get<double>()) + "");
 		plot.Py_STR("dt = total_time / total_frames");
 
 		plot.Py_STR("time_ax = ax.text(0.97, 0.97, \"\", color = \"white\",\
 			transform = ax.transAxes, ha = \"right\", va = \"top\")");
-		plot.Py_STR("xdt = np.linspace(0, " + std::to_string(js["total time"].get<double>()) + " / femtoseconds, total_frames)");
-		plot.Py_STR("psi_index = np.linspace(0, " + std::to_string(js["store steps"].get<int>()-1) + ", total_frames)");
+		plot.Py_STR("xdt = np.linspace(0, " + std::to_string(S["total time"].get<double>()) + " / femtoseconds, total_frames)");
+		plot.Py_STR("psi_index = np.linspace(0, " + std::to_string(S["store steps"].get<int>()-1) + ", total_frames)");
 		plot.Py_STR("def func_animation(frame) :\n\
 		index = int(psi_index[frame])\n\
 		time_ax.set_text(u\"t = {} femtoseconds\".format(\" % .3f\" % (xdt[frame])))\n\
@@ -334,8 +334,8 @@ for line, text in zip(leg.get_lines(), leg.get_texts()) :\
 		plot.Py_STR("a = animation.FuncAnimation(fig, func_animation, \
 			blit = False, frames = total_frames, interval= 1/fps * 1000)");
 
-		std::string jss = js["path save"];
-		jss += js["mode"];
+		std::string jss = S["path save"];
+		jss += S["mode"];
 		if (save) {
 			plot.Py_STR("a.save('" + jss + ".gif', fps = fps, metadata = dict(artist = 'Me'))");
 		}
@@ -356,22 +356,22 @@ for line, text in zip(leg.get_lines(), leg.get_texts()) :\
 		return b;
 	}
 
-	void sav_settings(json& js, std::string name) {
+	void sav_settings(json& S, std::string name) {
 		std::ofstream outf(name + ".json");
 		if (!check_if_file_exists(name + ".json"))
 		{
-			outf << js;
+			outf << S;
 			outf.close();
 		}
 	}
 
-	void get_settings(json& js, std::string name) {
+	void get_settings(json& S, std::string name) {
 		std::ifstream inf(name + ".json");
 		if (!inf) {
 			std::cout << "file does not exist !";
 			exit(0);
 		}
-		inf >> js;
+		inf >> S;
 		inf.close();
 	}
 
@@ -463,8 +463,8 @@ for line, text in zip(leg.get_lines(), leg.get_texts()) :\
 	std::vector < std::vector<T>> harmonic_oscillator_plus_coulomb_interaction()
 	{
 		//double extent = 25 * qc::Am;
-		auto x1 = linspace(-js["extent"].get<double>() / 2, js["extent"].get<double>() / 2, js["N"]);
-		auto x2 = linspace(-js["extent"].get<double>() / 2, js["extent"].get<double>() / 2, js["N"]);
+		auto x1 = linspace(-S["extent"].get<double>() / 2, S["extent"].get<double>() / 2, S["N"]);
+		auto x2 = linspace(-S["extent"].get<double>() / 2, S["extent"].get<double>() / 2, S["N"]);
 		x3 = meshgrid(x1, x2);
 		double k = 0.5;
 		std::vector < std::vector<T>> V_harmonic = 0.5 * k * pow(x3.first, 2) + 0.5 * k * pow(x3.second, 2);
@@ -497,54 +497,54 @@ for line, text in zip(leg.get_lines(), leg.get_texts()) :\
 
 		std::vector<T> barrier(x.size());
 
-		if (js["mode"] == "tunnel+") {
+		if (S["mode"] == "tunnel+") {
 			for (const auto& i : zip(x, barrier)) {
-				if (((get<0>(i) > (js["x0"] * qc::Am - a / 2)) && (get<0>(i) < (js["x0"] * qc::Am + a / 2))))
-					get<1>(i) = js["V0"];
+				if (((get<0>(i) > (S["x0"] * qc::Am - a / 2)) && (get<0>(i) < (S["x0"] * qc::Am + a / 2))))
+					get<1>(i) = S["V0"];
 			}
 		}
 
-		if (js["mode"] == "tunnel-") {
+		if (S["mode"] == "tunnel-") {
 			for (const auto& i : zip(x, barrier)) {
-				if (((get<0>(i) > (js["x0"] * qc::Am - a / 2)) && (get<0>(i) < (js["x0"] * qc::Am + a / 2))))
-					get<1>(i) = -js["V0"];
+				if (((get<0>(i) > (S["x0"] * qc::Am - a / 2)) && (get<0>(i) < (S["x0"] * qc::Am + a / 2))))
+					get<1>(i) = -S["V0"];
 			}
 		}
 
-		if (js["mode"] == "two tunnel+") {
+		if (S["mode"] == "two tunnel+") {
 			for (const auto& i : zip(x, barrier)) {
-				if (((get<0>(i) > (js["x0"] * qc::Am - a / 2)) && (get<0>(i) < (js["x0"] * qc::Am + a / 2))))
-					get<1>(i) = js["V0"];
-				if (((get<0>(i) > (js["x1"] * qc::Am - a / 2)) && (get<0>(i) < (js["x1"] * qc::Am + a / 2))))
-					get<1>(i) = js["V0"];
+				if (((get<0>(i) > (S["x0"] * qc::Am - a / 2)) && (get<0>(i) < (S["x0"] * qc::Am + a / 2))))
+					get<1>(i) = S["V0"];
+				if (((get<0>(i) > (S["x1"] * qc::Am - a / 2)) && (get<0>(i) < (S["x1"] * qc::Am + a / 2))))
+					get<1>(i) = S["V0"];
 			}
 		}
 
 
-		if (js["mode"] == "two tunnel+-") {
-			barrier = where((x > (js["x0"] * qc::Am - a / 2)) & (x < (js["x0"] * qc::Am + a / 2)), js["V0"], barrier);
-			barrier = where((x > (js["x1"] * qc::Am - a / 2)) & (x < (js["x1"] * qc::Am + a / 2)), -js["V0"], barrier);
+		if (S["mode"] == "two tunnel+-") {
+			barrier = where((x > (S["x0"] * qc::Am - a / 2)) & (x < (S["x0"] * qc::Am + a / 2)), S["V0"], barrier);
+			barrier = where((x > (S["x1"] * qc::Am - a / 2)) & (x < (S["x1"] * qc::Am + a / 2)), -S["V0"], barrier);
 		}
 
-		if (js["mode"] == "diode") {
+		if (S["mode"] == "diode") {
 			for (const auto& i : zip(x, barrier)) {
-				if (((get<0>(i) > (js["x0"] * qc::Am - a / 2)) && (get<0>(i) < (js["x0"] * qc::Am + a / 2))))
-					get<1>(i) = js["V0"];
-				if (((get<0>(i) > (js["x1"] * qc::Am - a / 2)) && (get<0>(i) < (js["x1"] * qc::Am + a / 2))))
-					get<1>(i) = -js["V0"];
-				if (((get<0>(i) > (js["x2"] * qc::Am - a / 2)) && (get<0>(i) < (js["x2"] * qc::Am + a / 2))))
-					get<1>(i) = -js["V0"];
+				if (((get<0>(i) > (S["x0"] * qc::Am - a / 2)) && (get<0>(i) < (S["x0"] * qc::Am + a / 2))))
+					get<1>(i) = S["V0"];
+				if (((get<0>(i) > (S["x1"] * qc::Am - a / 2)) && (get<0>(i) < (S["x1"] * qc::Am + a / 2))))
+					get<1>(i) = -S["V0"];
+				if (((get<0>(i) > (S["x2"] * qc::Am - a / 2)) && (get<0>(i) < (S["x2"] * qc::Am + a / 2))))
+					get<1>(i) = -S["V0"];
 			}
 		}
 
-		if (js["mode"] == "capacitor") {
+		if (S["mode"] == "capacitor") {
 			for (const auto& i : zip(x, barrier)) {
-				if (((get<0>(i) > (js["x0"] * qc::Am - a / 2)) && (get<0>(i) < (js["x0"] * qc::Am + a / 2))))
-					get<1>(i) = -js["V0"];
-				//if (((get<0>(i) > (js["x1"] - a / 2)) && (get<0>(i) < (js["x1"] + a / 2))))
-					//get<1>(i) = js["V0"];
-				if (((get<0>(i) > (js["x2"] * qc::Am - a / 2)) && (get<0>(i) < (js["x2"] * qc::Am + a / 2))))
-					get<1>(i) = -js["V0"];
+				if (((get<0>(i) > (S["x0"] * qc::Am - a / 2)) && (get<0>(i) < (S["x0"] * qc::Am + a / 2))))
+					get<1>(i) = -S["V0"];
+				//if (((get<0>(i) > (S["x1"] - a / 2)) && (get<0>(i) < (S["x1"] + a / 2))))
+					//get<1>(i) = S["V0"];
+				if (((get<0>(i) > (S["x2"] * qc::Am - a / 2)) && (get<0>(i) < (S["x2"] * qc::Am + a / 2))))
+					get<1>(i) = -S["V0"];
 			}
 		}
 
