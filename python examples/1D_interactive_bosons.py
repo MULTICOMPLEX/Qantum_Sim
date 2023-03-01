@@ -19,7 +19,7 @@ hbar = 1.0
 
 n = 256
 
-js = {
+S = {
  "total time": 0.5 * femtoseconds,
  "store steps": 200,
  "σ": 0.4 * Å, #initial_wavefunction 
@@ -34,14 +34,14 @@ js = {
  "dt": 4 / (np.log2(n) * np.sqrt(n)),
  "extent": 25 * Å,
  "animation duration": 10, #seconds
- "save animation": False,
+ "save animation": 1,
  "path save": "./gifs/",
  "title": "1D interactive bosons"
 }
 
 
-x1 = np.linspace(-js["extent"]/2, js["extent"]/2, js["N"])
-x2 = np.linspace(-js["extent"]/2, js["extent"]/2, js["N"])
+x1 = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
+x2 = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 x1, x2 = np.meshgrid(x1, x2)
 
 #potential energy operator
@@ -58,9 +58,9 @@ def V():
 #initial waveform
 def PSI_0():
     #This wavefunction correspond to two stationary gaussian wavepackets. The wavefunction must be symmetric: Ψ(x1,x2) = Ψ(x2,x1)
-    σ = js["σ"]
-    𝜇01 = js["𝜇01"]
-    𝜇02 = js["𝜇02"]
+    σ = S["σ"]
+    𝜇01 = S["𝜇01"]
+    𝜇02 = S["𝜇02"]
 
 
     return (np.exp(-(x1 - 𝜇01)**2/(4*σ**2))*np.exp(-(x2 - 𝜇02)**2/(4*σ**2)) 
@@ -72,22 +72,22 @@ Vmin = np.amin(V)
 Vmax = np.amax(V)
 
 dx = x1[0][1] - x1[0][0]
-p1 = np.fft.fftfreq(js["N"], d = dx) * hbar  * 2*np.pi
-p2 = np.fft.fftfreq(js["N"], d = dx) * hbar  * 2*np.pi
+p1 = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
+p2 = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
 p1, p2 = np.meshgrid(p1, p2)
 p2 = (p1**2 + p2**2)
 
         
 store_steps = 200
-dt_store = js["total time"]/store_steps
+dt_store = S["total time"]/store_steps
 
-Nt_per_store_step = int(np.round(dt_store / js["dt"]))
+Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 Nt_per_store_step = Nt_per_store_step
 
 #time/dt and dt_store/dt must be integers. Otherwise dt is rounded to match that the Nt_per_store_stepdivisions are integers
 dt = dt_store/Nt_per_store_step
 
-Ψ = np.zeros((store_steps + 1, *([js["N"]] * 2)), dtype = np.complex128)
+Ψ = np.zeros((store_steps + 1, *([S["N"]] * 2)), dtype = np.complex128)
             
 Ψ[0] = PSI_0()
 
@@ -101,8 +101,8 @@ pyfftw.interfaces.cache.enable()
 scipy.fft.set_backend(pyfftw.interfaces.scipy_fft)
     
           
-tmp = pyfftw.empty_aligned((js["N"], js["N"]), dtype='complex128')
-c = pyfftw.empty_aligned((js["N"], js["N"]), dtype='complex128')
+tmp = pyfftw.empty_aligned((S["N"], S["N"]), dtype='complex128')
+c = pyfftw.empty_aligned((S["N"], S["N"]), dtype='complex128')
 fft_object = pyfftw.FFTW(tmp, c, direction='FFTW_FORWARD', axes=(0,1))
 ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD', axes=(0,1))
                  
@@ -201,9 +201,9 @@ def plot(t, xlim=None, figsize=(10, 5), potential_saturation=0.8, wavefunction_s
             ax2.set_xlim(np.array(xlim)/Å)
 
 
-        index = int((store_steps)/ js["total time"] *t)
+        index = int((store_steps)/ S["total time"] *t)
         
-        L = js["extent"] / Å
+        L = S["extent"] / Å
        
            
         
@@ -242,7 +242,7 @@ def plot(t, xlim=None, figsize=(10, 5), potential_saturation=0.8, wavefunction_s
         interpolation = "bilinear", extent = [-L/2, L/2, -L/2, L/2])  
         
         prob_density = np.abs(np.sum(  (Ψ_plot[index])*np.conjugate(Ψ_plot[index])  , axis = 1))
-        x = np.linspace(-L/2, L/2, js["N"])
+        x = np.linspace(-L/2, L/2, S["N"])
         prob_plot = ax2.plot(x,  prob_density, color= "cyan")
         prob_plot_fill = ax2.fill_between(x,prob_density, alpha=0.1, color= "cyan" )
         #ax1.set_aspect('equal', adjustable='box')
@@ -260,8 +260,7 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
     potential_saturation=0.8, wavefunction_saturation=0.8, title = "1D interactive bosons"):
         
         total_frames = int(fps * animation_duration)
-        dt = js["total time"] / total_frames
-       
+        
 
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
         
@@ -270,10 +269,11 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
         ax2 = fig.add_subplot(grid[3:7, 5:10], sharex=ax1) # probability density of finding any particle at x 
         index = 0
         
-        L = js["extent"] / Å
+        L = S["extent"] / Å
         
         potential_plot = ax1.imshow((V + Vmin)/(Vmax-Vmin), 
-        vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", interpolation = "bilinear", extent = [-L/2, L/2, -L/2, L/2])  
+        vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
+        interpolation = "bilinear", extent = [-L/2, L/2, -L/2, L/2])  
         
         wavefunction_plot = ax1.imshow(complex_to_rgba(Ψ_plot[0], 
         max_val= wavefunction_saturation), origin = "lower", interpolation = "bilinear", extent=[-L / 2,L / 2,-L / 2,L / 2])
@@ -314,13 +314,14 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
         ax2.spines['top'].set_linewidth(1)
         ax2.spines['right'].set_linewidth(1)
         
+        ax1.set_facecolor('#002b36')
+        ax2.set_facecolor('#002b36')
 
         time_ax = ax2.text(0.97,0.97, "",  color = "white",
                         transform=ax2.transAxes, ha="right", va="top")
         time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (0.00/femtoseconds)))
 
        
-
         if xlim != None:
             ax1.set_xlim(np.array(xlim)/Å)
             ax1.set_ylim(np.array(xlim)/Å)
@@ -328,29 +329,18 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
 
         prob_density = np.abs(np.sum(  (Ψ_plot[index])*np.conjugate(Ψ_plot[index])  , axis = 1))
 
-        x = np.linspace(-L/2, L/2, js["N"])
-        #prob_plot, = ax2.plot(x,  prob_density, color= "cyan")
-        #prob_plot_fill = ax2.fill_between(x,prob_density, alpha=0.1, color= "cyan" )
-        #ax1.set_aspect('equal', adjustable='box')
+        x = np.linspace(-L/2, L/2, S["N"])
 
-        ax2.set_ylim([0,np.amax(prob_density)*1.3])
-
-
-        #print(total_frames)
-        animation_data = {'t': 0.0, 'ax1':ax1 , 'ax2':ax2 ,'frame' : 0, 'max_prob_density' : max(prob_density)*1.3}
-        def func_animation(*arg):
+        
+        animation_data = {'max_prob_density' : max(prob_density)*1.3}
+        
+        xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
+        psi_index = np.linspace(0, S["store steps"], total_frames)
+        
+        def func_animation(frame):
             
-            time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (animation_data['t']/femtoseconds)))
-
-            animation_data['t'] = animation_data['t'] + dt
-            if animation_data['t'] > js["total time"]:
-                animation_data['t'] = 0.0
-
-            #print(animation_data['frame'])
-            animation_data['frame'] +=1
-            index = int((store_steps)/ js["total time"] * animation_data['t'])
-
-            wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
+            index = int(psi_index[frame])
+            
             
             if save_animation == True: #avoid reseting the axis makes it faster
                 ax2.clear()
@@ -359,25 +349,29 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
                 ax2.set_title("Probability density", color = "white")
                 ax1.set_facecolor('#002b36')
                 ax2.set_facecolor('#002b36')
+            
+            
+            time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
 
+            wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
+            
             prob_density = np.abs(np.sum(  (Ψ_plot[index])*np.conjugate(Ψ_plot[index])  , axis = 1))
 
             prob_plot, = ax2.plot(x,  prob_density, color= "cyan")
             prob_plot_fill = ax2.fill_between(x,prob_density, alpha=0.1, color= "cyan" )
+            
             new_prob_density = max(prob_density)*1.3
+            
             if new_prob_density > animation_data['max_prob_density']:
                 animation_data['max_prob_density'] = new_prob_density
 
             ax2.set_ylim([0,animation_data['max_prob_density']])
 
-            ax1.set_facecolor('#002b36')
-            ax2.set_facecolor('#002b36')
 
-            return potential_plot,wavefunction_plot, time_ax, prob_plot, prob_plot_fill
+            return potential_plot, wavefunction_plot, prob_plot, prob_plot_fill
 
 
-        frame = 0
-        a = animation.FuncAnimation(fig, func_animation,
+        ani = animation.FuncAnimation(fig, func_animation,
                                     blit=True, frames=total_frames, interval= 1/fps * 1000)
         if save_animation == True:
             #Writer = animation.writers['ffmpeg']
@@ -385,16 +379,16 @@ def animate(xlim=None, ylim=None, figsize=(10, 6), animation_duration = 5, fps =
             #a.save('animation.mp4', writer=writer)
             if(title == ''):
                 title = "animation"
-            a.save(js["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
+            ani.save(S["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
             
         else:
             plt.show()
 
 
 
-plot(t = 0, xlim=[-10* Å,10* Å], potential_saturation = 0.5, wavefunction_saturation = 0.2, title = js["title"])
+plot(t = 0, xlim=[-10* Å,10* Å], potential_saturation = 0.5, wavefunction_saturation = 0.2, title = S["title"])
 
 
 animate(xlim=[-10* Å,10* Å], potential_saturation = 500, wavefunction_saturation = 0.2, 
-animation_duration = js["animation duration"], 
-save_animation = js["save animation"], title = js["title"])
+animation_duration = S["animation duration"], 
+save_animation = S["save animation"], title = S["title"])
