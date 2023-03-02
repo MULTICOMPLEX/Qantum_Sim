@@ -6,10 +6,8 @@ import multiprocessing
 
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from matplotlib.colors import hsv_to_rgb
 from visuals import *
 from constants import *
-from scipy.integrate import quad, quad_vec
 
 n = 2048*2
 
@@ -175,7 +173,7 @@ energies = H_expectation
 #print("\energies =\n", energies.reshape(-1, 1))
 
 
-superpositions(eigenstates, coeffs, energies, extent=10*Å)
+superpositions(eigenstates, coeffs, energies, extent=10*Å, save_animation = S["save animation"])
 
 Ψ /= np.amax(np.abs(Ψ))
 

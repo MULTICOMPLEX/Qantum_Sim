@@ -30,7 +30,7 @@ def apply_projection2(tmp, psi_list, dt):
     return tmp
 
 
-def ITEnp(Ψ, phi, dt, store_steps, Nt_per_store_step, Ur, Uk, _, p):
+def ITEnp(Ψ, phi, dt, store_steps, Nt_per_store_step, Ur, Uk, _):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
@@ -131,7 +131,7 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
             animation_data['norm'] = get_norm_factor(psi0)
             psi0 *= animation_data['norm']
         energies = Energies
-        params = {'dt': 0.05, 
+        params = {'dt': 0.01, 
                   'xlim': [-extent/2.0, 
                          extent/2.0],
                   'save_animation': False,
@@ -230,6 +230,7 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
         if params['save_animation'] == True:
             ani.save('superpositions.gif', fps=fps, metadata=dict(artist='Me'))
             return
-        plt.show()
+        else:
+         plt.show()
         
         
