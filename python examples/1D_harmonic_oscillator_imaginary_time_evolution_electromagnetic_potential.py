@@ -170,7 +170,7 @@ for _ in bar(range(1)):
 print("Took", time.time() - t0)
 
 Ψ[0] = norm(Ψ[-1])
-phi.append(Ψ[0])
+phi = [Ψ[0]]
 
 t0 = time.time()
 if (S["NW"]-1):
@@ -206,7 +206,7 @@ def hamiltonian_operator(psi, V):
 
 def expectation_value(psi, V, operator):
     operator_values = operator(psi, V)
-    expectation = np.sum(np.abs(operator_values)**2) * dx
+    expectation = np.vdot(psi, operator_values)#E = <Ψ|H|Ψ> 
     return expectation
 
 H_expectation = []
@@ -272,7 +272,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
         index = int(psi_index[frame])
 
         energy_ax.set_text(u"energy = {} joules".format(
-            "%.6e" % H_expectation[index]))
+            "%.5e" % np.real(H_expectation[index])))
         
         time_ax.set_text(u"t = {} femtoseconds".format(
             "%.3f" % (xdt[frame])))

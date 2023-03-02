@@ -7,14 +7,9 @@ import multiprocessing
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from matplotlib.colors import hsv_to_rgb
-
-Å = 1.8897261246257702
-femtoseconds = 4.134137333518212 * 10.
-m_e = 1.0
-hbar = 1.0
-eV = 0.03674932217565499
-
-# extent = 25 * Å
+from visuals import *
+from constants import *
+from scipy.integrate import quad, quad_vec
 
 n = 2048*2
 
@@ -23,7 +18,7 @@ S = {
     "mode": "two tunnel+-",
     "total time": 0.5 * femtoseconds,
     "store steps": 20,
-    "σ": 0.7 * Å,
+    "σ": 0.5 * Å,
     "v0": 60,  # T momentum
     "V0": 2,  # barrier voltage
     "initial offset": 0,
@@ -35,13 +30,13 @@ S = {
     "extent": 20 * Å,  # 150, 30
     "extentN": -75 * Å,
     "extentP": +85 * Å,
-    "NW": 60,
+    "NW": 30,
     "imaginary time evolution": True,
     "animation duration": 10,  # seconds
-    "save animation": True,
+    "save animation": False,
     "fps": 30,
     "path save": "./gifs/",
-    "title": "1D harmonic oscillator imaginary time evolution"
+    "title": "1D harmonic oscillator superpositions"
 }
 
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
@@ -55,67 +50,12 @@ def V():
     return 2 * k * x**2
 
 #initial waveform
-def PSI_0(σ, v0, offset):
+def 𝜓0(σ, v0, offset):
     # This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     σ = σ
     v0 = v0 * Å / femtoseconds
     p_x0 = m_e * v0
     return np.exp(-1/(4 * σ**2) * ((x-offset)**2) / np.sqrt(2*np.pi * σ**2)) * np.exp(p_x0*x*1j)
-
-
-def norm(phi):
-    return phi / np.sqrt(np.vdot(phi, phi) * dt)
-
-
-def norm2(phi):
-    norm = np.sum(np.square(np.abs(phi)))*dt
-    return phi/np.sqrt(norm)
-
-
-def apply_projection(tmp, psi_list):
-    for psi in psi_list:
-        tmp -= np.vdot(psi*dt, tmp) * psi
-    return tmp
-
-
-def apply_projection2(tmp, psi_list):
-    for psi in psi_list:
-        tmp -= np.sum(tmp*np.conj(psi)*dt)*psi
-    return tmp
-
-
-def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp):
-    for i in range(store_steps):
-        tmp = np.copy(Ψ[i])
-        for _ in range(Nt_per_store_step):
-            fft_object(Ur*tmp, c)
-            ifft_object(Uk*c, tmp)
-            tmp *= Ur
-            tmp = apply_projection(tmp, phi)
-            # tmp = norm(apply_projection(tmp, phi))
-        Ψ[i+1] = norm(tmp)
-    return
-
-
-def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _):
-    for i in range(store_steps):
-        tmp = Ψ[i]
-        for _ in range(Nt_per_store_step):
-            c = np.fft.fftn(Ur*tmp)
-            tmp = Ur * np.fft.ifftn(Uk*c)
-            tmp = apply_projection(tmp, phi)
-        Ψ[i+1] = norm(tmp)
-    return
-
-
-def complex_plot(x, phi):
-    plt.plot(x, np.abs(phi), label='$|\psi(x)|$')
-    plt.plot(x, np.real(phi), label='$Re|\psi(x)|$')
-    plt.plot(x, np.imag(phi), label='$Im|\psi(x)|$')
-    plt.legend(loc='lower left')
-    plt.show()
-    return
-
 
 V = V()
 Vmin = np.amin(V)
@@ -152,21 +92,33 @@ c = pyfftw.empty_aligned(S["N"], dtype='complex128')
 fft_object = pyfftw.FFTW(Ur * tmp, c, direction='FFTW_FORWARD')
 ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 
+def ITE(Ψ, phi, dt, store_steps, Nt_per_store_step, Ur, Uk, tmp):
+    for i in range(store_steps):
+        tmp = np.copy(Ψ[i])
+        for _ in range(Nt_per_store_step):
+            fft_object(Ur*tmp, c)
+            ifft_object(Uk*c, tmp)
+            tmp *= Ur
+            tmp = apply_projection(tmp, phi, dt)
+            # tmp = norm(apply_projection(tmp, phi))
+        Ψ[i+1] = norm(tmp, dt)
+    return
 
 print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
-Ψ[0] = norm(PSI_0(S["σ"], S["v0"], S["initial offset"]))
+Ψ[0] = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
+
 phi = [Ψ[0]]
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    ITE(Ψ, phi, dt, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
-Ψ[0] = norm(Ψ[-1])
+Ψ[0] = norm(Ψ[-1], dt)
 phi = [Ψ[0]]
 
 t0 = time.time()
@@ -174,24 +126,16 @@ if (S["NW"]-1):
     bar = progressbar.ProgressBar(maxval=S["NW"])
 # raising operators
 for _ in bar(range(S["NW"]-1)):
-    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
-    phi.append(norm(Ψ[-1]))
+    ITE(Ψ, phi, dt, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    phi.append(norm(Ψ[-1], dt))
 if (S["NW"]-1):
     print("Took", time.time() - t0)
 
 
-def differentiate_twice(f):
-    f = np.fft.ifftn(-p2*np.fft.fftn(f))
-    return f
-
-hbar = 1.054571817e-34    # Reduced Planck constant in J*s
-m = 9.10938356e-31        # Mass of electron in kg
-m_e = m
-
 # Define the Hamiltonian operator
 def hamiltonian_operator(psi):
     # Calculate the kinetic energy part of the Hamiltonian
-    KE = -(hbar**2 / 2*m) * differentiate_twice(psi)
+    KE = -(hbar**2 / 2*m) * differentiate_twice(psi, p2)
     # K = -(hbar^2 / 2m) * d^2/dx^2
     # KE = (hbar^2 / 2m) * |dpsi/dx|^2
     # Calculate the potential energy part of the Hamiltonian
@@ -200,19 +144,38 @@ def hamiltonian_operator(psi):
     H = KE + PE
     return H
 
-
 def expectation_value(psi, operator):
     operator_values = operator(psi)
     expectation = np.vdot(psi, operator_values)#E = <Ψ|H|Ψ> 
     return expectation
 
 H_expectation = []
-for i in (Ψ):
+for i in (phi):
     H_expectation = np.append(
         H_expectation, expectation_value(i, hamiltonian_operator))
 
-print("\nenergy =\n", H_expectation.reshape(-1, 1))
+eigenstates = np.array(phi) 
 
+𝜓0 = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
+
+
+coeffs = np.zeros(S["NW"], dtype='complex128')
+for k in(range(eigenstates.shape[0])):
+    coeffs[k] = np.vdot(eigenstates[k], 𝜓0)
+
+
+initial_waveform = np.zeros_like(eigenstates[0])
+for k in(range(eigenstates.shape[0])):
+    initial_waveform += coeffs[k]*eigenstates[k]
+
+   
+#complex_plot(x, initial_waveform)
+
+energies = H_expectation
+#print("\energies =\n", energies.reshape(-1, 1))
+
+
+superpositions(eigenstates, coeffs, energies, extent=10*Å)
 
 Ψ /= np.amax(np.abs(Ψ))
 
@@ -267,9 +230,6 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
     def func_animation(frame):
 
         index = int(psi_index[frame])
-
-        energy_ax.set_text(u"energy = {} joules".format(
-            "%.5e" % np.real(H_expectation[index])))
         
         time_ax.set_text(u"t = {} femtoseconds".format(
             "%.3f" % (xdt[frame])))
