@@ -103,7 +103,7 @@ class ComplexSliderWidget(widgets.AxesWidget):
             if not self.animated:
                 event.canvas.draw()
 
-def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time = 20, **kw):
+def superpositions(eigenstates, states, energies, extent, fps = 30, total_time = 20, **kw):
         """
         Visualize the time evolution of a superposition of energy eigenstates.
         The circle widgets control the relative phase of each of the eigenstates.
@@ -115,7 +115,7 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
         total_frames = fps * total_time
    
         coeffs = None
-        get_norm_factor = lambda psi: 1.0/np.sqrt(np.sum(psi*np.conj(psi)))
+        get_norm_factor = lambda psi: 1.0/(np.sqrt(np.sum(psi*np.conj(psi)))+1e-6)
         animation_data = {'ticks': 0, 'norm': get_norm_factor(eigenstates[0]),
                           'is_paused': False}
         psi0 = eigenstates[0]*get_norm_factor(eigenstates[0])
@@ -127,10 +127,10 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
             coeffs = states
             eigenstates = eigenstates[0: len(states)]
             states = len(states)
-            psi0 = np.tensordot(coeffs, eigenstates, 1)
+            psi0 = np.dot(coeffs, eigenstates)
             animation_data['norm'] = get_norm_factor(psi0)
             psi0 *= animation_data['norm']
-        energies = Energies
+ 
         params = {'dt': 0.01, 
                   'xlim': [-extent/2.0, 
                          extent/2.0],
@@ -178,7 +178,7 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
             def update(phi, r):
                 animation_data['is_paused'] = True
                 coeffs[n] = r*np.exp(1.0j*phi)
-                psi = np.tensordot(coeffs, eigenstates, 1)
+                psi = np.dot(coeffs, eigenstates)
                 animation_data['norm'] = get_norm_factor(psi)
                 line1.set_ydata(np.real(psi))
                 line2.set_ydata(np.imag(psi))
@@ -212,7 +212,7 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
                 e *= np.exp(-1.0j*energies[0:states]*params['dt'])
             np.copyto(coeffs, coeffs*e)
             norm_factor = animation_data['norm']
-            psi = np.tensordot(coeffs*norm_factor, eigenstates, 1)
+            psi = np.dot(coeffs*norm_factor, eigenstates)
             line1.set_ydata(np.real(psi))
             line2.set_ydata(np.imag(psi))
             line3.set_ydata(np.abs(psi))
@@ -222,7 +222,7 @@ def superpositions(eigenstates, states, Energies, extent, fps = 30, total_time =
                 for i, c in enumerate(coeffs):
                     phi, r = np.angle(c), np.abs(c)
                     artists[i].set_xdata([phi, phi])
-                    artists[i].set_ydata([0.0, r])
+                    #artists[i].set_ydata([0.0, r])
                 return artists
         ani = animation.FuncAnimation(fig, func, blit=True, interval=1000.0/60.0,
                                     frames=None if (not params['save_animation']) else
