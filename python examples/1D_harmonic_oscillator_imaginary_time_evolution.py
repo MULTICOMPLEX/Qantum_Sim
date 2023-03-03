@@ -202,12 +202,9 @@ def expectation_value(psi, operator):
     expectation = np.vdot(psi, operator_values)#E = <Ψ|H|Ψ> 
     return expectation
 
-H_expectation = []
-for i in (Ψ):
-    H_expectation = np.append(
-        H_expectation, expectation_value(i, hamiltonian_operator))
+energies = np.array([expectation_value(i, hamiltonian_operator) for i in Ψ])
 
-print("\nenergy =\n", H_expectation.reshape(-1, 1))
+print("\nenergy =\n", energies.reshape(-1, 1))
 
 
 Ψ /= np.amax(np.abs(Ψ))
@@ -265,7 +262,7 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
         index = int(psi_index[frame])
 
         energy_ax.set_text(u"energy = {} joules".format(
-            "%.5e" % np.real(H_expectation[index])))
+            "%.5e" % np.real(energies[index])))
         
         time_ax.set_text(u"t = {} femtoseconds".format(
             "%.3f" % (xdt[frame])))

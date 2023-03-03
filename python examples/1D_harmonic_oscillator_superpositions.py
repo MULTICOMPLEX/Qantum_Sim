@@ -4,6 +4,7 @@ import progressbar
 import pyfftw
 import multiprocessing
 
+
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from visuals import *
@@ -137,6 +138,7 @@ def hamiltonian_operator(psi):
     H = KE + PE
     return H
 
+
 def expectation_value(psi, operator):
     operator_values = operator(psi)
     expectation = np.vdot(psi, operator_values)#E = <Ψ|H|Ψ> 
@@ -145,7 +147,7 @@ def expectation_value(psi, operator):
 energies = np.array([expectation_value(i, hamiltonian_operator) for i in phi])
 #print("\energies =\n", energies.reshape(-1, 1))
 
-eigenstates = np.array(phi) 
+eigenstates = phi 
 
 𝜓0 = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
 

@@ -192,7 +192,7 @@ m = 9.10938356e-31        # Mass of electron in kg
 m_e = m
 
 # Define the Hamiltonian operator
-def hamiltonian_operator(psi, V):
+def hamiltonian_operator(psi):
     # Calculate the kinetic energy part of the Hamiltonian
     KE = -(hbar**2 / 2*m) * differentiate_twice(psi)
     # K = -(hbar^2 / 2m) * d^2/dx^2
@@ -204,21 +204,16 @@ def hamiltonian_operator(psi, V):
     return H
 
 
-def expectation_value(psi, V, operator):
-    operator_values = operator(psi, V)
+def expectation_value(psi, operator):
+    operator_values = operator(psi)
     expectation = np.vdot(psi, operator_values)#E = <Ψ|H|Ψ> 
     return expectation
 
-H_expectation = []
-for i in (Ψ):
-    H_expectation = np.append(
-        H_expectation, expectation_value(i, phi_V(), hamiltonian_operator))
-
-print("\nenergy =\n", H_expectation.reshape(-1, 1))
+energies = np.array([expectation_value(i, hamiltonian_operator) for i in Ψ])
+print("\nenergy =\n", energies.reshape(-1, 1))
 
 
-Ψ /= np.amax(np.abs(Ψ))
-
+Ψ /= np.max(np.abs(Ψ))
 
 
 def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5, fps=20, save_animation=False,
@@ -263,16 +258,15 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
     for line, text in zip(leg.get_lines(), leg.get_texts()):
         text.set_color(line.get_color())
     
-
     xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
-    psi_index = np.linspace(0, S["store steps"]-1, total_frames)
+    psi_index = np.linspace(0, S["store steps"], total_frames)
     
     def func_animation(frame):
 
         index = int(psi_index[frame])
 
         energy_ax.set_text(u"energy = {} joules".format(
-            "%.5e" % np.real(H_expectation[index])))
+            "%.5e" % np.real(energies[index])))
         
         time_ax.set_text(u"t = {} femtoseconds".format(
             "%.3f" % (xdt[frame])))
