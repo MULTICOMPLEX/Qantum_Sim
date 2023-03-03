@@ -147,36 +147,21 @@ def expectation_value(psi, operator):
     expectation = np.vdot(psi, operator_values)#E = <Ψ|H|Ψ> 
     return expectation
 
-H_expectation = []
-for i in (phi):
-    H_expectation = np.append(
-        H_expectation, expectation_value(i, hamiltonian_operator))
+energies = np.array([expectation_value(i, hamiltonian_operator) for i in phi])
+#print("\energies =\n", energies.reshape(-1, 1))
 
 eigenstates = np.array(phi) 
 
 𝜓0 = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
 
+coeffs = np.dot(eigenstates.conj(), 𝜓0)
 
-coeffs = np.zeros(S["NW"], dtype='complex128')
-for k in(range(eigenstates.shape[0])):
-    coeffs[k] = np.vdot(eigenstates[k], 𝜓0)
-
-
-initial_waveform = np.zeros_like(eigenstates[0])
-for k in(range(eigenstates.shape[0])):
-    initial_waveform += coeffs[k]*eigenstates[k]
-
-   
+initial_waveform = np.dot(eigenstates.T, coeffs)
 #complex_plot(x, initial_waveform)
-
-energies = H_expectation
-#print("\energies =\n", energies.reshape(-1, 1))
-
 
 superpositions(eigenstates, coeffs, energies, extent=10*Å, save_animation = S["save animation"])
 
-Ψ /= np.amax(np.abs(Ψ))
-
+Ψ /= np.max(np.abs(Ψ))
 
 
 def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5, fps=20, save_animation=False,

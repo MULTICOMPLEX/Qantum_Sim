@@ -131,7 +131,7 @@ def superpositions(eigenstates, states, energies, extent, fps = 30, total_time =
             animation_data['norm'] = get_norm_factor(psi0)
             psi0 *= animation_data['norm']
  
-        params = {'dt': 0.01, 
+        params = {'dt': 0.02, 
                   'xlim': [-extent/2.0, 
                          extent/2.0],
                   'save_animation': False,
