@@ -160,7 +160,7 @@ print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
 Ψ[0] = norm(PSI_0(S["σ"], S["v0"], S["initial offset"]))
-phi = [Ψ[0]]
+phi = np.array([Ψ[0]])
 
 # Define the ground state wave function
 t0 = time.time()
@@ -169,8 +169,8 @@ for _ in bar(range(1)):
     ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
-Ψ[0] = norm(Ψ[-1])
-phi = [Ψ[0]]
+Ψ[0] = Ψ[-1]
+phi = np.array([Ψ[0]])
 
 t0 = time.time()
 if (S["NW"]-1):
@@ -178,7 +178,7 @@ if (S["NW"]-1):
 # raising operators
 for _ in bar(range(S["NW"]-1)):
     ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
-    phi.append(norm(Ψ[-1]))
+    phi = np.vstack([phi, Ψ[-1]])
 if (S["NW"]-1):
     print("Took", time.time() - t0)
 

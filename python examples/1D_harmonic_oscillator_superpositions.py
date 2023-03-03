@@ -41,11 +41,7 @@ x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 
 #potential energy operator
 def V():
-    m = m_e
-    T = 0.6*femtoseconds
-    w = 2*np.pi/T
-    k = m * w**2
-    return 2 * k * x**2
+    return 2 * m_e * (2 * np.pi / (0.6 * femtoseconds))**2 * x**2
 
 #initial waveform
 def 𝜓0(σ, v0, offset):
@@ -106,8 +102,7 @@ print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
 Ψ[0] = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
-
-phi = [Ψ[0]]
+phi = np.array([Ψ[0]])
 
 # Define the ground state wave function
 t0 = time.time()
@@ -116,8 +111,8 @@ for _ in bar(range(1)):
     ITE(Ψ, phi, dt, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
-Ψ[0] = norm(Ψ[-1], dt)
-phi = [Ψ[0]]
+Ψ[0] = Ψ[-1]
+phi = np.array([Ψ[0]])
 
 t0 = time.time()
 if (S["NW"]-1):
@@ -125,7 +120,7 @@ if (S["NW"]-1):
 # raising operators
 for _ in bar(range(S["NW"]-1)):
     ITE(Ψ, phi, dt, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
-    phi.append(norm(Ψ[-1], dt))
+    phi = np.vstack([phi, Ψ[-1]])
 if (S["NW"]-1):
     print("Took", time.time() - t0)
 
@@ -157,7 +152,7 @@ eigenstates = np.array(phi)
 coeffs = np.dot(eigenstates.conj(), 𝜓0)
 
 initial_waveform = np.dot(eigenstates.T, coeffs)
-#complex_plot(x, initial_waveform)
+complex_plot(x, initial_waveform)
 
 superpositions(eigenstates, coeffs, energies, extent=10*Å, save_animation = S["save animation"])
 

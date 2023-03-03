@@ -71,18 +71,15 @@ def norm2(phi):
     norm = np.sum(np.square(np.abs(phi)))*dt
     return phi/np.sqrt(norm)
 
-
-def apply_projection(tmp, psi_list):
-    for psi in psi_list:
-        tmp -= np.vdot(psi*dt, tmp) * psi
+def apply_projection(tmp, psi):
+    for p in psi:
+        tmp -= np.vdot(p*dt, tmp) * p
     return tmp
-
 
 def apply_projection2(tmp, psi_list):
     for psi in psi_list:
         tmp -= np.sum(tmp*np.conj(psi)*dt)*psi
     return tmp
-
 
 def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp):
     for i in range(store_steps):
@@ -95,7 +92,6 @@ def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp):
             # tmp = norm(apply_projection(tmp, phi))
         Ψ[i+1] = norm(tmp)
     return
-
 
 def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _):
     for i in range(store_steps):
@@ -157,7 +153,7 @@ print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
 Ψ[0] = norm(PSI_0(S["σ"], S["v0"], S["initial offset"]))
-phi = [Ψ[0]]
+phi = np.array([Ψ[0]])
 
 # Define the ground state wave function
 t0 = time.time()
@@ -166,8 +162,8 @@ for _ in bar(range(1)):
     ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
 print("Took", time.time() - t0)
 
-Ψ[0] = norm(Ψ[-1])
-phi = [Ψ[0]]
+Ψ[0] = Ψ[-1]
+phi = np.array([Ψ[0]])
 
 t0 = time.time()
 if (S["NW"]-1):
@@ -175,7 +171,7 @@ if (S["NW"]-1):
 # raising operators
 for _ in bar(range(S["NW"]-1)):
     ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
-    phi.append(norm(Ψ[-1]))
+    phi = np.vstack([phi, Ψ[-1]])
 if (S["NW"]-1):
     print("Took", time.time() - t0)
 
