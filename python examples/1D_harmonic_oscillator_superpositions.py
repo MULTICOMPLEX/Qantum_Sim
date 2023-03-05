@@ -29,7 +29,7 @@ S = {
     "extent": 20 * Å,  # 150, 30
     "extentN": -75 * Å,
     "extentP": +85 * Å,
-    "NW": 30,
+    "Number of States": 30,
     "imaginary time evolution": True,
     "animation duration": 10,  # seconds
     "save animation": False,
@@ -70,12 +70,12 @@ dt = dt_store/Nt_per_store_step
 
 m = 1
 if (S["imaginary time evolution"]):
-    Ur = np.exp(-0.5*(dt/hbar)*V)
-    Uk = np.exp(-0.5*(dt/(m*hbar))*p2)
+    Ur = np.exp(-(dt/hbar)*V)
+    Uk = np.exp(-(dt/(m*hbar))*p2)
 
 else:
-    Ur = np.exp(-0.5j*(dt/hbar)*V())
-    Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
+    Ur = np.exp(-1j*(dt/hbar)*V())
+    Uk = np.exp(-1j*(dt/(m*hbar))*p2)
 
 # Configure PyFFTW to use all cores (the default is single-threaded)
 pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
@@ -87,42 +87,42 @@ c = pyfftw.empty_aligned(S["N"], dtype='complex128')
 fft_object = pyfftw.FFTW(Ur * tmp, c, direction='FFTW_FORWARD')
 ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
 
-def ITE(Ψ, phi, dt, store_steps, Nt_per_store_step, Ur, Uk, tmp):
+def ITE(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, tmp, proj, ite):
     for i in range(store_steps):
         tmp = np.copy(Ψ[i])
         for _ in range(Nt_per_store_step):
             fft_object(Ur*tmp, c)
             ifft_object(Uk*c, tmp)
             tmp *= Ur
-            tmp = apply_projection(tmp, phi, dt)
-            # tmp = norm(apply_projection(tmp, phi))
-        Ψ[i+1] = norm(tmp, dt)
+            if(proj):
+             tmp = norm(apply_projection(tmp, phi, dx), dx)
+            elif(ite):
+             tmp = norm(tmp, dx)
+        Ψ[i+1] = tmp
     return
 
 print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
-Ψ[0] = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
+Ψ[0] = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dx)
 phi = np.array([Ψ[0]])
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITE(Ψ, phi, dt, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, False, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
-
-t0 = time.time()
-if (S["NW"]-1):
-    bar = progressbar.ProgressBar(maxval=S["NW"])
-# raising operators
-for _ in bar(range(S["NW"]-1)):
-    ITE(Ψ, phi, dt, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
-    phi = np.vstack([phi, Ψ[-1]])
-if (S["NW"]-1):
+if (S["Number of States"]-1):
+    t0 = time.time()
+    bar = progressbar.ProgressBar(maxval=S["Number of States"]-1)
+    # raising operators
+    for i in bar(range(S["Number of States"]-1)):
+        ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True, S["imaginary time evolution"])
+        phi = np.concatenate([phi, Ψ[-1][np.newaxis, :]], axis=0)
     print("Took", time.time() - t0)
 
 
@@ -149,12 +149,12 @@ energies = np.array([expectation_value(i, hamiltonian_operator) for i in phi])
 
 eigenstates = phi 
 
-𝜓0 = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dt)
+𝜓0 = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]), dx)
 
 coeffs = np.dot(eigenstates.conj(), 𝜓0)
 
 initial_waveform = np.dot(eigenstates.T, coeffs)
-complex_plot(x, initial_waveform)
+#complex_plot(x, initial_waveform)
 
 superpositions(eigenstates, coeffs, energies, extent=10*Å, save_animation = S["save animation"])
 
@@ -233,4 +233,4 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
 # visualize the time dependent simulation
 animate(xlim=[-S["extent"]/2/Å, S["extent"]/2/Å], animation_duration=S["animation duration"], fps=S["fps"],
-        save_animation=S["save animation"], title=S["title"]+" "+str(S["NW"])+" states")
+        save_animation=S["save animation"], title=S["title"]+" "+str(S["Number of States"])+" states")

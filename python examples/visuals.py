@@ -9,35 +9,35 @@ def differentiate_twice(f, p2):
     f = np.fft.ifftn(-p2*np.fft.fftn(f))
     return f
 
-def norm(phi, dt):
-    return phi / np.sqrt(np.vdot(phi, phi) * dt)
 
-
-def norm2(phi, dt):
-    norm = np.sum(np.square(np.abs(phi)))*dt
+def norm(phi, dx):
+    norm = np.sum(np.square(np.abs(phi)))*dx
     return phi/np.sqrt(norm)
 
 
-def apply_projection(tmp, psi_list, dt):
+def apply_projection(tmp, psi_list, dx):
     for psi in psi_list:
-        tmp -= np.vdot(psi*dt, tmp) * psi
+        tmp -= np.vdot(psi, tmp) * psi * dx
     return tmp
 
 
-def apply_projection2(tmp, psi_list, dt):
+def apply_projection2(tmp, psi_list, dx):
     for psi in psi_list:
-        tmp -= np.sum(tmp*np.conj(psi)*dt)*psi
+        tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
     return tmp
 
 
-def ITEnp(Ψ, phi, dt, store_steps, Nt_per_store_step, Ur, Uk, _):
+def ITEnp(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, _, proj, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-            tmp = apply_projection(tmp, phi, dt)
-        Ψ[i+1] = norm(tmp, dt)
+            if(proj):
+             tmp = norm(apply_projection(tmp, phi, dx), dx)
+            elif(ite):
+             tmp = norm(tmp, dx)
+        Ψ[i+1] = tmp
     return
     
 def complex_plot(x, phi):
@@ -131,7 +131,7 @@ def superpositions(eigenstates, states, energies, extent, fps = 30, total_time =
             animation_data['norm'] = get_norm_factor(psi0)
             psi0 *= animation_data['norm']
  
-        params = {'dt': 0.02, 
+        params = {'dt': 0.001, 
                   'xlim': [-extent/2.0, 
                          extent/2.0],
                   'save_animation': False,
@@ -222,7 +222,7 @@ def superpositions(eigenstates, states, energies, extent, fps = 30, total_time =
                 for i, c in enumerate(coeffs):
                     phi, r = np.angle(c), np.abs(c)
                     artists[i].set_xdata([phi, phi])
-                    #artists[i].set_ydata([0.0, r])
+                    artists[i].set_ydata([0.0, r])
                 return artists
         ani = animation.FuncAnimation(fig, func, blit=True, interval=1000.0/60.0,
                                     frames=None if (not params['save_animation']) else

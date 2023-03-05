@@ -21,7 +21,7 @@ n = 2048*2
 S = {
     "name": "Q0",
     "mode": "two tunnel+-",
-    "total time": 0.5 * femtoseconds,
+    "total time": 1 * femtoseconds,
     "store steps": 20,
     "σ": 0.7 * Å,
     "v0": 60,  # T momentum
@@ -35,7 +35,7 @@ S = {
     "extent": 20 * Å,  # 150, 30
     "extentN": -75 * Å,
     "extentP": +85 * Å,
-    "NW": 60,
+    "Number of States": 60,
     "imaginary time evolution": True,
     "animation duration": 10,  # seconds
     "save animation": True,
@@ -45,14 +45,11 @@ S = {
 }
 
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
+dx = x[1] - x[0]
 
 #potential energy operator
 def V():
-    m = m_e
-    T = 0.6*femtoseconds
-    w = 2*np.pi/T
-    k = m * w**2
-    return 2 * k * x**2
+    return 2 * m_e * (2 * np.pi / (0.6 * femtoseconds))**2 * x**2
 
 #initial waveform
 def PSI_0(σ, v0, offset):
@@ -64,43 +61,44 @@ def PSI_0(σ, v0, offset):
 
 
 def norm(phi):
-    return phi / np.sqrt(np.vdot(phi, phi) * dt)
-
-
-def norm2(phi):
-    norm = np.sum(np.square(np.abs(phi)))*dt
+    norm = np.sum(np.square(np.abs(phi)))*dx
     return phi/np.sqrt(norm)
 
 def apply_projection(tmp, psi):
     for p in psi:
-        tmp -= np.vdot(p*dt, tmp) * p
+        tmp -= np.vdot(p, tmp) * p * dx
     return tmp
 
 def apply_projection2(tmp, psi_list):
     for psi in psi_list:
-        tmp -= np.sum(tmp*np.conj(psi)*dt)*psi
+        tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
     return tmp
 
-def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp):
+def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp, proj):
     for i in range(store_steps):
         tmp = np.copy(Ψ[i])
         for _ in range(Nt_per_store_step):
             fft_object(Ur*tmp, c)
             ifft_object(Uk*c, tmp)
             tmp *= Ur
-            tmp = apply_projection(tmp, phi)
-            # tmp = norm(apply_projection(tmp, phi))
-        Ψ[i+1] = norm(tmp)
+            if(proj):
+             tmp = norm(apply_projection(tmp, phi))
+            elif(S["imaginary time evolution"]):
+             tmp = norm(tmp)
+        Ψ[i+1] = tmp
     return
 
-def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _):
+def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _, proj):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-            tmp = apply_projection(tmp, phi)
-        Ψ[i+1] = norm(tmp)
+            if(proj):
+             tmp = norm(apply_projection(tmp, phi))
+            elif(S["imaginary time evolution"]):
+             tmp = norm(tmp)
+        Ψ[i+1] = tmp
     return
 
 
@@ -117,7 +115,7 @@ V = V()
 Vmin = np.amin(V)
 Vmax = np.amax(V)
 
-dx = x[1] - x[0]
+
 px = np.fft.fftfreq(S["N"], d=dx) * hbar * 2*np.pi
 p2 = px**2
 
@@ -159,20 +157,18 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
+    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, False)
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
-
-t0 = time.time()
-if (S["NW"]-1):
-    bar = progressbar.ProgressBar(maxval=S["NW"])
-# raising operators
-for _ in bar(range(S["NW"]-1)):
-    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp)
-    phi = np.vstack([phi, Ψ[-1]])
-if (S["NW"]-1):
+if (S["Number of States"]-1):
+    t0 = time.time()
+    bar = progressbar.ProgressBar(maxval=S["Number of States"]-1)
+    # raising operators
+    for i in bar(range(S["Number of States"]-1)):
+        ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
+        phi = np.concatenate([phi, Ψ[-1][np.newaxis, :]], axis=0)
     print("Took", time.time() - t0)
 
 
@@ -286,4 +282,4 @@ def animate(xlim=None, figsize=(16/9 * 5.804 * 0.9, 5.804), animation_duration=5
 
 # visualize the time dependent simulation
 animate(xlim=[-S["extent"]/2/Å, S["extent"]/2/Å], animation_duration=S["animation duration"], fps=S["fps"],
-        save_animation=S["save animation"], title=S["title"]+" "+str(S["NW"])+" states")
+        save_animation=S["save animation"], title=S["title"]+" "+str(S["Number of States"])+" states")
