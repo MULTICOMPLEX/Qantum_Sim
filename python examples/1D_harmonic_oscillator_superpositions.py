@@ -66,7 +66,7 @@ Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 
 dt = dt_store/Nt_per_store_step
 
-Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype=np.complex128)
+Ψ = np.zeros((S["store steps"] + 1, *([S["N"]])), dtype=np.complex64)
 
 m = 1
 if (S["imaginary time evolution"]):
@@ -82,18 +82,16 @@ pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
 pyfftw.interfaces.cache.enable()
 
 
-tmp = pyfftw.empty_aligned(S["N"],  dtype='complex128')
-c = pyfftw.empty_aligned(S["N"], dtype='complex128')
-fft_object = pyfftw.FFTW(Ur * tmp, c, direction='FFTW_FORWARD')
-ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
+tmp = pyfftw.zeros_aligned(S["N"],  dtype='complex64')
+c = pyfftw.zeros_aligned(S["N"], dtype='complex64')
 
-def ITE(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, tmp, proj, ite):
+
+def ITE(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
-        tmp = np.copy(Ψ[i])
+        tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
-            fft_object(Ur*tmp, c)
-            ifft_object(Uk*c, tmp)
-            tmp *= Ur
+            c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
+            tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
             if(proj):
              tmp = norm(apply_projection(tmp, phi, dx), dx)
             elif(ite):
@@ -111,17 +109,19 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True, S["imaginary time evolution"])
+    ITE(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
-if (S["Number of States"]-1):
+
+nos = S["Number of States"]-1
+if (nos):
     t0 = time.time()
-    bar = progressbar.ProgressBar(maxval=S["Number of States"]-1)
+    bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
-    for i in bar(range(S["Number of States"]-1)):
-        ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True, S["imaginary time evolution"])
+    for i in bar(range(nos)):
+        ITE(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
         phi = np.concatenate([phi, Ψ[-1][np.newaxis, :]], axis=0)
     print("Took", time.time() - t0)
 

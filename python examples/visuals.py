@@ -27,17 +27,18 @@ def apply_projection2(tmp, psi_list, dx):
     return tmp
 
 
-def ITEnp(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, _, proj, ite):
+def ITEnp(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
             if(proj):
-             tmp = norm(apply_projection(tmp, phi, dx), dx)
-            elif(ite):
-             tmp = norm(tmp, dx)
-        Ψ[i+1] = tmp
+             tmp = apply_projection(tmp, phi, dx)
+        if(proj | ite):   
+            Ψ[i+1] = norm(tmp, dx)
+        else:
+          Ψ[i+1] = tmp
     return
     
 def complex_plot(x, phi):

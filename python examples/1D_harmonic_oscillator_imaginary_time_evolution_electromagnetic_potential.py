@@ -58,7 +58,7 @@ def phi_V():
     return (0.5 + np.cos(2*np.pi*x/10)) * m_e
     
 #initial waveform
-def PSI_0(σ, v0, offset):
+def 𝜓0(σ, v0, offset):
     # This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     σ = σ
     v0 = v0 * Å / femtoseconds
@@ -82,21 +82,20 @@ def apply_projection2(tmp, psi_list):
     return tmp
 
 
-def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp, proj):
+def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
-        tmp = np.copy(Ψ[i])
+        tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
-            fft_object(Ur*tmp, c)
-            ifft_object(Uk*c, tmp)
-            tmp *= Ur
+            c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
+            tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
             if(proj):
              tmp = norm(apply_projection(tmp, phi))
-            elif(S["imaginary time evolution"]):
+            elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp
     return
 
-def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _, proj):
+def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
@@ -104,7 +103,7 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _, proj):
             tmp = Ur * np.fft.ifftn(Uk*c)
             if(proj):
              tmp = norm(apply_projection(tmp, phi))
-            elif(S["imaginary time evolution"]):
+            elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp
     return
@@ -149,34 +148,33 @@ pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
 pyfftw.interfaces.cache.enable()
 
 
-tmp = pyfftw.empty_aligned(S["N"],  dtype='complex128')
-c = pyfftw.empty_aligned(S["N"], dtype='complex128')
-fft_object = pyfftw.FFTW(Ur * tmp, c, direction='FFTW_FORWARD')
-ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD')
+tmp = pyfftw.zeros_aligned(S["N"],  dtype='complex64',n = 16)
+c = pyfftw.zeros_aligned(S["N"], dtype='complex64',n = 16)
 
 
 print("store_steps", S["store steps"])
 print("Nt_per_store_step", Nt_per_store_step)
 
-Ψ[0] = norm(PSI_0(S["σ"], S["v0"], S["initial offset"]))
+Ψ[0] = norm(𝜓0(S["σ"], S["v0"], S["initial offset"]))
 phi = np.array([Ψ[0]])
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
+    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True)
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
 
-if (S["Number of States"]-1):
+nos = S["Number of States"]-1
+if (nos):
     t0 = time.time()
-    bar = progressbar.ProgressBar(maxval=S["Number of States"])
+    bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
-    for _ in bar(range(S["Number of States"]-1)):
-        ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
+    for i in bar(range(nos)):
+        ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True)
         phi = np.concatenate([phi, Ψ[-1][np.newaxis, :]], axis=0)
     print("Took", time.time() - t0)
 

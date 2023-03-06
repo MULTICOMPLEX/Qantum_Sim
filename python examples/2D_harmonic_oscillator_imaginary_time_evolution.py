@@ -17,12 +17,13 @@ import matplotlib.animation as animation
 femtoseconds = 4.134137333518212 * 10.
 m_e = 1.0
 hbar = 1.0
-n = 128
+n = 512
 
+NStates = 7
 
 S = {
- "total time": 2 * femtoseconds,
- "store steps": 50,
+ "total time": 1 * femtoseconds,
+ "store steps": 20,
  "σ": 1.0 * Å, #
  "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum #64
  "initial wavefunction offset x": 0 * Å,
@@ -30,7 +31,7 @@ S = {
  "N": n,
  "dt": 0.25,
  "extent": 15 * Å,#30
- "Number of States": 9,
+ "Number of States": NStates,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
@@ -46,10 +47,10 @@ dx = x[1] - x[0]
 x, y = np.meshgrid(x,y)
 
 def norm2(phi):
-    return phi/np.sqrt(np.linalg.norm(phi)**2*dx)
+    return phi/np.sqrt(np.linalg.norm(phi)**2)
 
 def norm(phi):
-    return phi/np.sqrt(np.sum(np.square(np.abs(phi)))*dx)
+    return phi/np.sqrt(np.sum(np.square(np.abs(phi))*dx))
 
 def apply_projection(tmp, psi):
     for p in psi:
@@ -61,21 +62,20 @@ def apply_projection2(tmp, psi_list):
         tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
     return tmp
 
-def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, tmp, proj):
+def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
-        tmp = np.copy(Ψ[i])
+        tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
-            fft_object(Ur*tmp, c)
-            ifft_object(Uk*c, tmp)
-            tmp *= Ur
+            c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
+            tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
             if(proj):
              tmp = norm(apply_projection(tmp, phi))
-            elif(S["imaginary time evolution"]):
+            elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp
     return
 
-def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _, proj):
+def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
@@ -83,10 +83,11 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, _, proj):
             tmp = Ur * np.fft.ifftn(Uk*c)
             if(proj):
              tmp = norm(apply_projection(tmp, phi))
-            elif(S["imaginary time evolution"]):
+            elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp
     return
+
 
 #potential energy operator
 def V():
@@ -107,11 +108,12 @@ def V2():
     
 
 #initial waveform
-def PSI_0():
+def 𝜓0():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     p_x0 = m_e * S["v0"]
     σ = S["σ"]
-    return np.exp( -1/(4* σ**2) * ((x-0)**2+(y-0)**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
+    return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
+    (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
     
 
 V = V() 
@@ -130,7 +132,7 @@ Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 #time/dt and dt_store/dt must be integers. Otherwise dt is rounded to match that the Nt_per_store_stepdivisions are integers
 dt = dt_store/Nt_per_store_step
 
-Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.complex128)
+Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.cdouble)#csingle
             
 m = 1 
     
@@ -147,35 +149,34 @@ pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
 pyfftw.interfaces.cache.enable()
     
 
-tmp = pyfftw.empty_aligned((S["N"], S["N"]), dtype='complex128')
-c = pyfftw.empty_aligned((S["N"], S["N"]), dtype='complex128')
-fft_object = pyfftw.FFTW(tmp, c, direction='FFTW_FORWARD', axes=(0,1))
-ifft_object = pyfftw.FFTW(c, tmp, direction='FFTW_BACKWARD', axes=(0,1))
-           
-        
+tmp = pyfftw.zeros_aligned((S["N"], S["N"]), dtype='complex64',n = 16)
+c = pyfftw.zeros_aligned((S["N"], S["N"]), dtype='complex64',n = 16)
+          
 print("store steps", S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
 
         
-Ψ[0] = norm(PSI_0())       
+Ψ[0] = norm(𝜓0())       
 phi = np.array([Ψ[0]])
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
+    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
 print("Took", time.time() - t0)
+
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
 
-if (S["Number of States"]-1):
+nos = S["Number of States"]-1
+if (nos):
     t0 = time.time()
-    bar = progressbar.ProgressBar(maxval=S["Number of States"]-1)
+    bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
-    for i in bar(range(S["Number of States"]-1)):
-        ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
+    for i in bar(range(nos)):
+        ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
         phi = np.concatenate([phi, Ψ[-1][np.newaxis, :, :]], axis=0)
     print("Took", time.time() - t0)
         
