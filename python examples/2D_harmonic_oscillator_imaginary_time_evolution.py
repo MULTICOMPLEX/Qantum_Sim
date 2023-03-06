@@ -17,22 +17,22 @@ import matplotlib.animation as animation
 femtoseconds = 4.134137333518212 * 10.
 m_e = 1.0
 hbar = 1.0
-n = 256
+n = 128
 
 
 S = {
- "total time": 4 * femtoseconds,
+ "total time": 2 * femtoseconds,
  "store steps": 50,
  "σ": 1.0 * Å, #
- "v0": 8. * Å / femtoseconds, #initial_wavefunction momentum #64
+ "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum #64
  "initial wavefunction offset x": 0 * Å,
  "initial wavefunction offset y": 0 * Å,
  "N": n,
  "dt": 0.25,
  "extent": 15 * Å,#30
- "Number of States": 2,
+ "Number of States": 9,
  "imaginary time evolution": True,
- "animation duration": 6, #seconds
+ "animation duration": 4, #seconds
  "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
@@ -164,7 +164,7 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, False)
+    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]

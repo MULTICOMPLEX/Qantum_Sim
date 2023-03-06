@@ -157,11 +157,12 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, False)
+    ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True)
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
+
 if (S["Number of States"]-1):
     t0 = time.time()
     bar = progressbar.ProgressBar(maxval=S["Number of States"]-1)

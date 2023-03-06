@@ -111,7 +111,7 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, False, S["imaginary time evolution"])
+    ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, tmp, True, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
