@@ -175,7 +175,7 @@ if (nos):
     # raising operators
     for i in bar(range(nos)):
         ITE(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True)
-        phi = np.concatenate([phi, Ψ[-1][np.newaxis, :]], axis=0)
+        phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
 
 

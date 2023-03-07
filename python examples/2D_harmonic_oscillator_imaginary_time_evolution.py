@@ -17,20 +17,20 @@ import matplotlib.animation as animation
 femtoseconds = 4.134137333518212 * 10.
 m_e = 1.0
 hbar = 1.0
-n = 512
+n = 256
 
-NStates = 7
+NStates = 6
 
 S = {
- "total time": 1 * femtoseconds,
- "store steps": 20,
+ "total time": 2.8 * femtoseconds,
+ "store steps": 50,
  "σ": 1.0 * Å, #
  "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum #64
  "initial wavefunction offset x": 0 * Å,
  "initial wavefunction offset y": 0 * Å,
  "N": n,
- "dt": 0.25,
- "extent": 15 * Å,#30
+ "dt":  0.25/2,
+ "extent": 20 * Å,#30
  "Number of States": NStates,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
@@ -44,23 +44,30 @@ S = {
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 dx = x[1] - x[0]
+dy = y[1] - y[0]
 x, y = np.meshgrid(x,y)
 
-def norm2(phi):
-    return phi/np.sqrt(np.linalg.norm(phi)**2)
 
 def norm(phi):
-    return phi/np.sqrt(np.sum(np.square(np.abs(phi))*dx))
-
-def apply_projection(tmp, psi):
-    for p in psi:
-        tmp -= np.vdot(p, tmp) * p * dx
-    return tmp  
-
+    return phi/np.sqrt(np.sum(np.square(np.abs(phi)) * dx))
+ 
 def apply_projection2(tmp, psi_list):
     for psi in psi_list:
-        tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
+        tmp -= np.sum(tmp*psi.conj()) * psi * dx 
     return tmp
+
+def apply_projection3(tmp, psi_list):
+    for psi in psi_list:
+        tmp -= np.vdot(psi,tmp) * psi * dx
+    return tmp
+ 
+#P = sum_i |psi_i><psi_i|
+#method for projecting a vector onto a given subspace.
+#orthogonal projection 
+def apply_projection(tmp, psi_list):
+    for psi in psi_list:
+        tmp -= np.vdot(psi,tmp) * psi * dx
+    return norm(tmp)
 
 def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
@@ -82,7 +89,7 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
             if(proj):
-             tmp = norm(apply_projection(tmp, phi))
+             tmp = apply_projection(tmp, phi)
             elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp
@@ -108,13 +115,20 @@ def V2():
     
 
 #initial waveform
-def 𝜓0():
+def 𝜓0_x():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     p_x0 = m_e * S["v0"]
     σ = S["σ"]
     return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
     (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
-    
+ 
+#initial waveform
+def 𝜓0_y():
+    #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
+    p_x0 = m_e * S["v0"]
+    σ = S["σ"]
+    return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
+    (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*y*1j) 
 
 V = V() 
 Vmin = np.amin(V)
@@ -156,8 +170,9 @@ print("store steps", S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
 
         
-Ψ[0] = norm(𝜓0())       
+Ψ[0] = norm(𝜓0_x())       
 phi = np.array([Ψ[0]])
+
 
 # Define the ground state wave function
 t0 = time.time()
@@ -177,7 +192,7 @@ if (nos):
     # raising operators
     for i in bar(range(nos)):
         ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
-        phi = np.concatenate([phi, Ψ[-1][np.newaxis, :, :]], axis=0)
+        phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
         
 
@@ -311,16 +326,23 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
 
         time_ax = ax.text(0.97,0.97, "",  color = "white",
                         transform=ax.transAxes, ha="right", va="top", alpha=0.9)
- 
+        
+        energy_ax = ax.text(0.97,0.93, "",  color = "white",
+                        transform=ax.transAxes, ha="right", va="top", alpha=0.9)
+        
 
         xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
         psi_index = np.linspace(0, S["store steps"], total_frames)
         
         def func_animation(frame):
             
-            time_ax.set_text(u"t = {} femtoseconds".format("%.3f" % (xdt[frame])))
+            time_ax.set_text(u"time = {} femtoseconds".format("%.3f" % (xdt[frame])))
+            
             index = int(psi_index[frame])
             wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
+            
+            formatted_num = "{:12.8e}".format(np.abs(energies[index]))
+            energy_ax.set_text(u"Energy =  "+ formatted_num)
             
             return wavefunction_plot, time_ax
 
