@@ -19,7 +19,7 @@ m_e = 1.0
 hbar = 1.0
 n = 256
 
-NStates = 6
+NStates = 5
 
 S = {
  "total time": 2.8 * femtoseconds,
@@ -56,10 +56,6 @@ def apply_projection2(tmp, psi_list):
         tmp -= np.sum(tmp*psi.conj()) * psi * dx 
     return tmp
 
-def apply_projection3(tmp, psi_list):
-    for psi in psi_list:
-        tmp -= np.vdot(psi,tmp) * psi * dx
-    return tmp
  
 #P = sum_i |psi_i><psi_i|
 #method for projecting a vector onto a given subspace.

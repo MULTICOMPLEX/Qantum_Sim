@@ -67,12 +67,12 @@ def norm(phi):
 def apply_projection(tmp, psi):
     for p in psi:
         tmp -= np.vdot(p, tmp) * p * dx
-    return tmp
+    return norm(tmp)
 
 def apply_projection2(tmp, psi_list):
     for psi in psi_list:
         tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
-    return tmp
+    return norm(tmp)
 
 def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
     for i in range(store_steps):
@@ -81,7 +81,7 @@ def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
             c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
             tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
             if(proj):
-             tmp = norm(apply_projection(tmp, phi))
+             tmp = apply_projection(tmp, phi)
             elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp
@@ -94,7 +94,7 @@ def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
             if(proj):
-             tmp = norm(apply_projection(tmp, phi))
+             tmp = apply_projection(tmp, phi)
             elif(ite):
              tmp = norm(tmp)
         Ψ[i+1] = tmp

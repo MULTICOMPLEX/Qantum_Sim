@@ -93,7 +93,7 @@ def ITE(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
             c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
             tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
             if(proj):
-             tmp = norm(apply_projection(tmp, phi, dx), dx)
+             tmp = apply_projection(tmp, phi, dx)
             elif(ite):
              tmp = norm(tmp, dx)
         Ψ[i+1] = tmp
@@ -109,7 +109,7 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITE(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
+    ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
@@ -121,7 +121,7 @@ if (nos):
     bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
     for i in bar(range(nos)):
-        ITE(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
+        ITEnp(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
         phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
 
