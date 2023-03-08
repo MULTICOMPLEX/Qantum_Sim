@@ -19,10 +19,10 @@ m_e = 1.0
 hbar = 1.0
 n = 256
 
-NStates = 5
+NStates = 4
 
 S = {
- "total time": 2.8 * femtoseconds,
+ "total time": 4 * femtoseconds,
  "store steps": 50,
  "σ": 1.0 * Å, #
  "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum #64
@@ -40,57 +40,59 @@ S = {
  "title": "2D harmonic oscillator"
 }
 
-
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 dx = x[1] - x[0]
 dy = y[1] - y[0]
 x, y = np.meshgrid(x,y)
 
+def norm2(phi):
+    return phi/np.sqrt(np.sum(np.square(np.abs(phi)) * dx))
 
 def norm(phi):
-    return phi/np.sqrt(np.sum(np.square(np.abs(phi)) * dx))
- 
+    norm = np.linalg.norm(phi) * dx
+    return (phi * np.sqrt(dx)) / norm
+
 def apply_projection2(tmp, psi_list):
     for psi in psi_list:
         tmp -= np.sum(tmp*psi.conj()) * psi * dx 
     return tmp
 
- 
 #P = sum_i |psi_i><psi_i|
 #method for projecting a vector onto a given subspace.
 #orthogonal projection 
 def apply_projection(tmp, psi_list):
     for psi in psi_list:
-        tmp -= np.vdot(psi,tmp) * psi * dx
-    return norm(tmp)
+        tmp -= np.vdot(psi,tmp) * psi * dx   
+    return tmp
 
-def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
+def Split_Step_FFTW(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
             tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
-            if(proj):
-             tmp = norm(apply_projection(tmp, phi))
-            elif(ite):
-             tmp = norm(tmp)
-        Ψ[i+1] = tmp
+            if(ite):
+              tmp = apply_projection(tmp, phi)
+        if(ite):
+          Ψ[i+1] = norm(tmp)
+        else:
+          Ψ[i+1] = tmp
     return
 
-def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
+def Split_Step_NP(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-            if(proj):
-             tmp = apply_projection(tmp, phi)
-            elif(ite):
-             tmp = norm(tmp)
-        Ψ[i+1] = tmp
+            if(ite):
+              tmp = apply_projection(tmp, phi)
+        if(ite):
+          Ψ[i+1] = norm(tmp)
+        else:
+          Ψ[i+1] = tmp
     return
-
 
 #potential energy operator
 def V():
@@ -174,7 +176,7 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
+    Split_Step_NP(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 
@@ -187,7 +189,7 @@ if (nos):
     bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
     for i in bar(range(nos)):
-        ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
+        Split_Step_NP(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
         phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
         

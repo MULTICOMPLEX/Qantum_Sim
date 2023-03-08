@@ -59,47 +59,51 @@ def 𝜓0(σ, v0, offset):
     p_x0 = m_e * v0
     return np.exp(-1/(4 * σ**2) * ((x-offset)**2) / np.sqrt(2*np.pi * σ**2)) * np.exp(p_x0*x*1j)
 
-
-def norm(phi):
+def norm2(phi):
     norm = np.sum(np.square(np.abs(phi)))*dx
     return phi/np.sqrt(norm)
+
+def norm(phi):
+    norm = np.linalg.norm(phi) * dx
+    return (phi * np.sqrt(dx)) / norm
 
 def apply_projection(tmp, psi):
     for p in psi:
         tmp -= np.vdot(p, tmp) * p * dx
-    return norm(tmp)
+    return tmp
 
 def apply_projection2(tmp, psi_list):
     for psi in psi_list:
         tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
-    return norm(tmp)
-
-def ITE(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
+    return tmp
+    
+def Split_Step_FFTW(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
             tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
-            if(proj):
-             tmp = apply_projection(tmp, phi)
-            elif(ite):
-             tmp = norm(tmp)
-        Ψ[i+1] = tmp
+            if(ite):
+              tmp = apply_projection(tmp, phi)
+        if(ite):
+          Ψ[i+1] = norm(tmp)
+        else:
+          Ψ[i+1] = tmp
     return
 
-def ITEnp(phi, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
+def Split_Step_NP(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-            if(proj):
-             tmp = apply_projection(tmp, phi)
-            elif(ite):
-             tmp = norm(tmp)
-        Ψ[i+1] = tmp
+            if(ite):
+              tmp = apply_projection(tmp, phi)
+        if(ite):
+          Ψ[i+1] = norm(tmp)
+        else:
+          Ψ[i+1] = tmp
     return
-
 
 def complex_plot(x, phi):
     plt.plot(x, np.abs(phi), label='$|\psi(x)|$')
@@ -154,7 +158,7 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
+    Split_Step_NP(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 Ψ[0] = Ψ[-1]
@@ -166,7 +170,7 @@ if (nos):
     bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
     for i in bar(range(nos)):
-        ITEnp(phi, S["store steps"], Nt_per_store_step, Ur, Uk, True, S["imaginary time evolution"])
+        Split_Step_NP(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
         phi = np.concatenate([phi, Ψ[-1][np.newaxis, :]], axis=0)
     print("Took", time.time() - t0)
 

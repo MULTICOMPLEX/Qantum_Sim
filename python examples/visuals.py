@@ -9,35 +9,36 @@ def differentiate_twice(f, p2):
     f = np.fft.ifftn(-p2*np.fft.fftn(f))
     return f
 
-
 def norm(phi, dx):
+    norm = np.linalg.norm(phi) * dx
+    return (phi * np.sqrt(dx)) / norm
+
+def norm2(phi, dx):
     norm = np.sum(np.square(np.abs(phi)))*dx
     return phi/np.sqrt(norm)
-
 
 def apply_projection(tmp, psi_list, dx):
     for psi in psi_list:
         tmp -= np.vdot(psi, tmp) * psi * dx
-    return norm(tmp, dx)
-
+    return tmp
 
 def apply_projection2(tmp, psi_list, dx):
     for psi in psi_list:
         tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
-    return norm(tmp, dx)
+    return tmp
 
-
-def ITEnp(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, proj, ite):
+def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):
         tmp = Ψ[i]
         for _ in range(Nt_per_store_step):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
-            if(proj):
-             tmp = apply_projection(tmp, phi, dx)
-            elif(ite):
-             tmp = norm(tmp, dx)
-        Ψ[i+1] = tmp
+            if(ite):
+              tmp = apply_projection(tmp, phi, dx)
+        if(ite):
+           Ψ[i+1] = norm(tmp, dx)
+        else:
+           Ψ[i+1] = tmp 
     return
     
 def complex_plot(x, phi):
