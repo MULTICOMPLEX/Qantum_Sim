@@ -1,5 +1,13 @@
 # conversion constants to atomic units
 
+const = {
+ "Å": 1.8897261246257702,
+ "femtoseconds": 4.134137333518212 * 10.,
+ "m_e": 1.0,
+ "hbar": 1.0,
+ "m": 1 
+}
+
 hbar = 1.0
 m_e = 1.0
 a_0 = 1.0

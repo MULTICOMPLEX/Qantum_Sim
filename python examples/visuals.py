@@ -3,44 +3,100 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 import numpy as np
 from constants import *
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
+from matplotlib.colors import hsv_to_rgb
+import pyfftw
+from functions import *
 
 
-def differentiate_twice(f, p2):
-    f = np.fft.ifftn(-p2*np.fft.fftn(f))
-    return f
+px = 1 / plt.rcParams['figure.dpi']
 
-def norm(phi, dx):
-    norm = np.linalg.norm(phi) * dx
-    return (phi * np.sqrt(dx)) / norm
+viridis = cm.get_cmap('gray', 256)
+newcolors = viridis(np.linspace(0, 1, 256))
+mc = np.array([0, 43/256, 54/256, 1])
 
-def norm2(phi, dx):
-    norm = np.sum(np.square(np.abs(phi)))*dx
-    return phi/np.sqrt(norm)
-
-def apply_projection(tmp, psi_list, dx):
-    for psi in psi_list:
-        tmp -= np.vdot(psi, tmp) * psi * dx
-    return tmp
-
-def apply_projection2(tmp, psi_list, dx):
-    for psi in psi_list:
-        tmp -= np.sum(tmp*np.conj(psi)) * psi * dx
-    return tmp
-
-def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
-    for i in range(store_steps):
-        tmp = Ψ[i]
-        for _ in range(Nt_per_store_step):
-            c = np.fft.fftn(Ur*tmp)
-            tmp = Ur * np.fft.ifftn(Uk*c)
-            if(ite):
-              tmp = apply_projection(tmp, phi, dx)
-        if(ite):
-           Ψ[i+1] = norm(tmp, dx)
-        else:
-           Ψ[i+1] = tmp 
-    return
+newcolors[:150, :] = mc
+newcmp = ListedColormap(newcolors)
+      
+def complex_to_rgb(Z):
+    """Convert complex values to their rgb equivalent.
+    Parameters
+    ----------
+    Z : array_like
+        The complex values.
+    Returns
+    -------
+    array_like
+        The rgb values.
+    """
+    #using HSV space
+    r = np.abs(Z)
+    arg = np.angle(Z)
     
+    h = (arg + np.pi)  / (2 * np.pi)
+    s = np.ones(h.shape)
+    v = r  / np.amax(r)  #alpha
+    c = hsv_to_rgb(   np.moveaxis(np.array([h,s,v]) , 0, -1)  ) # --> tuple
+    return c
+
+def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0) -> np.ndarray:
+    r = np.abs(Z)
+    arg = np.angle(Z)
+    
+    h = (arg + np.pi)  / (2 * np.pi)
+    s = np.ones(h.shape)
+    v = np.ones(h.shape)  #alpha
+    rgb = hsv_to_rgb(   np.moveaxis(np.array([h,s,v]) , 0, -1)  ) # --> tuple
+
+    abs_z = np.abs(Z)/ max_val
+    abs_z = np.where(abs_z> 1., 1. ,abs_z)
+    return np.concatenate((rgb, abs_z.reshape((*abs_z.shape,1))), axis= (abs_z.ndim))
+    
+def plot(Ψ_plot, extent = 10, V = np.ndarray, Vmin = -10, Vmax = 10, t=0, xlim=None, ylim=None, 
+figsize=(640*px, 640*px), potential_saturation=0.5, wavefunction_saturation=0.2):
+
+        fig = plt.figure(figsize=figsize, facecolor='#002b36')
+        
+        ax = fig.add_subplot(1, 1, 1)  
+        
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        ax.tick_params(colors='white')
+        ax.spines['left'].set_color('white')
+        ax.spines['bottom'].set_color('white')
+        ax.spines['top'].set_color('white')
+        ax.spines['right'].set_color('white') 
+        
+        ax.spines['left'].set_linewidth(1)
+        ax.spines['bottom'].set_linewidth(1)
+        ax.spines['top'].set_linewidth(1)
+        ax.spines['right'].set_linewidth(1)    
+        
+        ax.set_xlabel("[Å]")
+        ax.set_ylabel("[Å]")
+        ax.set_title("$\psi(x,y,t)$")
+
+        time_ax = ax.text(0.97,0.97, "",  color = "white",
+                        transform=ax.transAxes, ha="right", va="top")
+        time_ax.set_text(u"t = {} femtoseconds".format("%.3f"  % (t/const["femtoseconds"])))
+
+        if xlim != None:
+            ax.set_xlim(np.array(xlim)/const["femtoseconds"])
+        if ylim != None:
+            ax.set_ylim(np.array(ylim)/const["femtoseconds"])
+      
+        
+        L = extent/const["femtoseconds"]
+        
+        ax.imshow((V + Vmin)/(Vmax-Vmin), 
+        vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
+        interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])  
+
+        ax.imshow(complex_to_rgba(Ψ_plot, max_val= wavefunction_saturation), origin = "lower", 
+        interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])  
+        plt.show()
+   
 def complex_plot(x, phi):
     plt.plot(x, np.abs(phi), label='$|\psi(x)|$')
     plt.plot(x, np.real(phi), label='$Re|\psi(x)|$')
@@ -233,5 +289,101 @@ def superpositions(eigenstates, states, energies, extent, fps = 30, total_time =
             return
         else:
          plt.show()
+
+def animate(
+Ψ_plot, 
+energies = np.ndarray, 
+extent = 10, 
+V = np.ndarray, 
+Vmin = -10, 
+Vmax = 10, 
+xlim=np.ndarray, 
+ylim=np.ndarray, 
+figsize=(7, 7), 
+animation_duration = 5, 
+fps = 20, 
+save_animation = False,
+potential_saturation=0.8, 
+title = "double slit experiment", 
+path_save = "", 
+total_time = 10, 
+store_steps = 20, 
+wavefunction_saturation=0.8):
+        
+        total_frames = int(fps * animation_duration)
+            
+        figsize = (640*px, 640*px)
+
+        fig = plt.figure(figsize=figsize, facecolor='#002b36')
+      
+        ax = fig.add_subplot(1, 1, 1)
+        
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        ax.tick_params(colors='white')
+        ax.spines['left'].set_color('white')
+        ax.spines['bottom'].set_color('white')
+        ax.spines['top'].set_color('white')
+        ax.spines['right'].set_color('white') 
+        
+        ax.spines['left'].set_linewidth(1)
+        ax.spines['bottom'].set_linewidth(1)
+        ax.spines['top'].set_linewidth(1)
+        ax.spines['right'].set_linewidth(1)              
+                
+
+        L = extent / const["Å"] / 2
+        potential_plot = ax.imshow((V + Vmin)/(Vmax-Vmin), 
+        vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
+        interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])
+        
+
+        wavefunction_plot = ax.imshow(complex_to_rgba(Ψ_plot[0], max_val= wavefunction_saturation),
+        origin = "lower", interpolation = "gaussian", extent=[-L/2, L/2, -L/2, L/2])
+
+
+        if xlim != None:
+            ax.set_xlim(np.array(xlim)/const["Å"])
+        if ylim != None:
+            ax.set_ylim(np.array(ylim)/const["Å"])
+
+        
+
+        ax.set_title("$\psi(x,y,t)$"+" "+title, color = "white")
+        ax.set_xlabel('[Å]')
+        ax.set_ylabel('[Å]')
+
+        time_ax = ax.text(0.97,0.97, "",  color = "white",
+                        transform=ax.transAxes, ha="right", va="top", alpha=0.9)
+        
+        energy_ax = ax.text(0.97,0.93, "",  color = "white",
+                        transform=ax.transAxes, ha="right", va="top", alpha=0.9)
+        
+
+        xdt = np.linspace(0, total_time/const["femtoseconds"], total_frames)
+        psi_index = np.linspace(0, store_steps, total_frames)
+        
+        def func_animation(frame):
+            
+            time_ax.set_text(u"time = {} femtoseconds".format("%.3f" % (xdt[frame])))
+            
+            index = int(psi_index[frame])
+            wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
+            
+            formatted_num = "{:12.8e}".format(np.abs(energies[index]))
+            energy_ax.set_text(u"Energy =  "+ formatted_num)
+            
+            return wavefunction_plot, time_ax
+
+
+        ani = animation.FuncAnimation(fig, func_animation,
+                                    blit=True, frames=total_frames, interval= 1/fps * 1000)
+        if save_animation == True:
+            if(title == ''):
+                title = "animation"
+            ani.save(path_save + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
+        else:
+            plt.show()
+            
         
         

@@ -1,142 +1,80 @@
 import numpy as np
 import time
 import progressbar
-import pyfftw
 import multiprocessing
-
-import matplotlib.pyplot as plt
-from matplotlib import widgets
-from matplotlib import animation
-from matplotlib import cm
-from matplotlib.colors import ListedColormap
-from matplotlib.colors import hsv_to_rgb
-import matplotlib.animation as animation
-
-
-Å = 1.8897261246257702
-femtoseconds = 4.134137333518212 * 10.
-m_e = 1.0
-hbar = 1.0
-n = 350
-
-NStates = 6
+from visuals import *
+from constants import *
+from functions import *
 
 S = {
- "total time": 20 * femtoseconds, #15, NStates >= 5  = 20
+ "total time": 10 * const["femtoseconds"], #for V_Coulomb: 15, NStates >= 5  = 20, >= 8 =35
+ "extent": 30 * const["Å"], #30
+ "N": 350,
  "store steps": 20,
- "σ": 1. * Å, #
- "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum #64
- "initial wavefunction offset x": 0 * Å,
- "initial wavefunction offset y": 0 * Å,
- "N": n,
  "dt":  0.5,
- "extent": 30 * Å,#30
- "Number of States": NStates,
+ "Number of States": 4,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
- "title": "2D harmonic oscillator Coulomb potential"
+ "σ_x": 1. * const["Å"], 
+ "σ_y": 1. * const["Å"], 
+ "v0": 64. * const["Å"] / const["femtoseconds"], #initial_wavefunction momentum #64
+ "initial wavefunction offset x": 0 * const["Å"],
+ "initial wavefunction offset y": 0 * const["Å"], 
+ "title": "2D harmonic oscillator Coulomb potential" #rotationally symmetric
+ #"title": "2D harmonic oscillator rotationally symmetric potential"
 }
-
+   
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 dx = x[1] - x[0]
 dy = y[1] - y[0]
 x, y = np.meshgrid(x,y)
 
-def norm2(phi):
-    return phi/np.sqrt(np.sum(np.square(np.abs(phi)) * dx))
-
-def norm(phi):
-    norm = np.linalg.norm(phi) * dx
-    return (phi * np.sqrt(dx)) / norm
-
-def apply_projection2(tmp, psi_list):
-    for psi in psi_list:
-        tmp -= np.sum(tmp*psi.conj()) * psi * dx 
-    return tmp
-
-#P = sum_i |psi_i><psi_i|
-#method for projecting a vector onto a given subspace.
-#orthogonal projection 
-def apply_projection(tmp, psi_list):
-    for psi in psi_list:
-        tmp -= np.vdot(psi,tmp) * psi * dx   
-    return tmp
-
-def Split_Step_FFTW(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
-    for i in range(store_steps):
-        tmp = Ψ[i]
-        for _ in range(Nt_per_store_step):
-            c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
-            tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
-            if(ite):
-              tmp = apply_projection(tmp, phi)
-        if(ite):
-          Ψ[i+1] = norm(tmp)
-        else:
-          Ψ[i+1] = tmp
-    return
-
-def Split_Step_NP(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
-    for i in range(store_steps):
-        tmp = Ψ[i]
-        for _ in range(Nt_per_store_step):
-            c = np.fft.fftn(Ur*tmp)
-            tmp = Ur * np.fft.ifftn(Uk*c)
-            if(ite):
-              tmp = apply_projection(tmp, phi)
-        if(ite):
-          Ψ[i+1] = norm(tmp)
-        else:
-          Ψ[i+1] = tmp
-    return
 
 #potential energy operator
 # rotationally symmetric potential
 #V(x,y) = (1/2) k (x^2 + y^2)
-def V():
-    k = 0.03
+def V_Rotational():
+    k = 0.5
     return k * (x**2 + y**2)
 
 #potential energy operator
 # Coulomb potential for a point charge
 #V(x,y) = (q/4πε) log[(x^2 + y^2)^(1/2)]
-def V():
+def V_Coulomb():
     q = 0.5
     ε = 1
     π = np.pi
     return (q/4*π*ε) * np.log(np.power((x**2 + y**2),0.5))
+
+
+V = V_Coulomb() 
+Vmin = np.amin(V)
+Vmax = np.amax(V)
     
 #initial waveform
 def 𝜓0_x():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
-    p_x0 = m_e * S["v0"]
-    σ = S["σ"]
+    p_x0 = const["m_e"] * S["v0"]
+    σ = S["σ_x"]
     return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
     (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
  
 #initial waveform
 def 𝜓0_y():
-    #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
-    p_x0 = m_e * S["v0"]
-    σ = S["σ"]
+    #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_y0
+    p_y0 = m_e * S["v0"]
+    σ = S["σ_y"]
     return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
-    (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*y*1j) 
-
-V = V() 
-Vmin = np.amin(V)
-Vmax = np.amax(V)
+    (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_y0*y*1j) 
 
 
-p1 = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
-p2 = np.fft.fftfreq(S["N"], d = dx) * hbar  * 2*np.pi
-p1, p2 = np.meshgrid(p1, p2)
-p2 = (p1**2 + p2**2)
+#plot(𝜓0_x(), S["extent"], V, Vmin, Vmax)
 
-    
+
 dt_store = S["total time"] / S["store steps"]
 Nt_per_store_step = int(np.round(dt_store / S["dt"]))
 #time/dt and dt_store/dt must be integers. Otherwise dt is rounded to match that the Nt_per_store_stepdivisions are integers
@@ -144,15 +82,16 @@ dt = dt_store/Nt_per_store_step
 
 Ψ = np.zeros((S["store steps"] + 1, *([S["N"]] * 2)), dtype = np.cdouble)#csingle
             
-m = 1 
-    
+            
+p2 = fft_frequencies(S["N"], dx, const["hbar"])
+   
 if (S["imaginary time evolution"]):
-    Ur = np.exp(-0.5*(dt/hbar)*V)
-    Uk = np.exp(-0.5*(dt/(m*hbar))*p2)
+    Ur = np.exp(-0.5*(dt/const["hbar"])*V)
+    Uk = np.exp(-0.5*(dt/(const["m"]*const["hbar"]))*p2)
 
 else:
-    Ur = np.exp(-0.5j*(dt/hbar)*V())
-    Uk = np.exp(-0.5j*(dt/(m*hbar))*p2)
+    Ur = np.exp(-0.5j*(dt/const["hbar"])*V())
+    Uk = np.exp(-0.5j*(dt/(const["m"]*const["hbar"]))*p2)
         
 # Configure PyFFTW to use all cores (the default is single-threaded)
 pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
@@ -166,15 +105,14 @@ print("store steps", S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
 
         
-Ψ[0] = norm(𝜓0_x())       
+Ψ[0] = norm(𝜓0_x(), dx)       
 phi = np.array([Ψ[0]])
-
 
 # Define the ground state wave function
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    Split_Step_FFTW(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
+    Split_Step_FFTW(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 
@@ -187,14 +125,10 @@ if (nos):
     bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
     for i in bar(range(nos)):
-        Split_Step_FFTW(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
+        Split_Step_FFTW(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
         phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
         
-
-def differentiate_twice(f):
-    f = np.fft.ifft2(-p2*np.fft.fft2(f))
-    return f
 
 hbar = 1.054571817e-34    # Reduced Planck constant in J*s
 m = 9.10938356e-31        # Mass of electron in kg
@@ -203,7 +137,7 @@ m_e = m
 # Define the Hamiltonian operator
 def hamiltonian_operator(psi):
     # Calculate the kinetic energy part of the Hamiltonian
-    KE = -(hbar**2 / 2*m) * differentiate_twice(psi)
+    KE = -(hbar**2 / 2*m) * differentiate_twice(psi, p2)
     # K = -(hbar^2 / 2m) * d^2/dx^2
     # KE = (hbar^2 / 2m) * |dpsi/dx|^2
     # Calculate the potential energy part of the Hamiltonian
@@ -211,7 +145,6 @@ def hamiltonian_operator(psi):
     # Combine the kinetic and potential energy parts to obtain the full Hamiltonian
     H = KE + PE
     return H
-
 
 def expectation_value(psi, operator):
     operator_values = operator(psi)
@@ -227,132 +160,7 @@ print("\nenergy =\n", energies.reshape(-1, 1))
 
 Ψ_plot = Ψ/Ψmax
 
-def complex_to_rgb(Z):
-    """Convert complex values to their rgb equivalent.
-    Parameters
-    ----------
-    Z : array_like
-        The complex values.
-    Returns
-    -------
-    array_like
-        The rgb values.
-    """
-    #using HSV space
-    r = np.abs(Z)
-    arg = np.angle(Z)
-    
-    h = (arg + np.pi)  / (2 * np.pi)
-    s = np.ones(h.shape)
-    v = r  / np.amax(r)  #alpha
-    c = hsv_to_rgb(   np.moveaxis(np.array([h,s,v]) , 0, -1)  ) # --> tuple
-    return c
 
-
-def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0) -> np.ndarray:
-    r = np.abs(Z)
-    arg = np.angle(Z)
-    
-    h = (arg + np.pi)  / (2 * np.pi)
-    s = np.ones(h.shape)
-    v = np.ones(h.shape)  #alpha
-    rgb = hsv_to_rgb(   np.moveaxis(np.array([h,s,v]) , 0, -1)  ) # --> tuple
-
-    abs_z = np.abs(Z)/ max_val
-    abs_z = np.where(abs_z> 1., 1. ,abs_z)
-    return np.concatenate((rgb, abs_z.reshape((*abs_z.shape,1))), axis= (abs_z.ndim))
-
-
-def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 20, save_animation = False, 
-    potential_saturation=0.8, title = "double slit experiment", wavefunction_saturation=0.8):
-        
-        total_frames = int(fps * animation_duration)
-        
-        px = 1 / plt.rcParams['figure.dpi']
-        figsize = (640*px, 640*px)
-        
-        
-        viridis = cm.get_cmap('gray', 256)
-        newcolors = viridis(np.linspace(0, 1, 256))
-        mc = np.array([0, 43/256, 54/256, 1])
-
-        newcolors[:150, :] = mc
-        newcmp = ListedColormap(newcolors)
-           
-       
-        fig = plt.figure(figsize=figsize, facecolor='#002b36')
-      
-        
-        ax = fig.add_subplot(1, 1, 1)
-        
-        ax.xaxis.label.set_color('white')
-        ax.yaxis.label.set_color('white')
-        ax.tick_params(colors='white')
-        ax.spines['left'].set_color('white')
-        ax.spines['bottom'].set_color('white')
-        ax.spines['top'].set_color('white')
-        ax.spines['right'].set_color('white') 
-        
-        ax.spines['left'].set_linewidth(1)
-        ax.spines['bottom'].set_linewidth(1)
-        ax.spines['top'].set_linewidth(1)
-        ax.spines['right'].set_linewidth(1)              
-                
-
-        L = S["extent"] / Å / 2
-        potential_plot = ax.imshow((V + Vmin)/(Vmax-Vmin), 
-        vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
-        interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])
-        
-
-        wavefunction_plot = ax.imshow(complex_to_rgba(Ψ_plot[0], max_val= wavefunction_saturation),
-        origin = "lower", interpolation = "gaussian", extent=[-L/2, L/2, -L/2, L/2])
-
-
-        if xlim != None:
-            ax.set_xlim(np.array(xlim)/Å)
-        if ylim != None:
-            ax.set_ylim(np.array(ylim)/Å)
-
-        
-
-        ax.set_title("$\psi(x,y,t)$"+" "+title, color = "white")
-        ax.set_xlabel('[Å]')
-        ax.set_ylabel('[Å]')
-
-        time_ax = ax.text(0.97,0.97, "",  color = "white",
-                        transform=ax.transAxes, ha="right", va="top", alpha=0.9)
-        
-        energy_ax = ax.text(0.97,0.93, "",  color = "white",
-                        transform=ax.transAxes, ha="right", va="top", alpha=0.9)
-        
-
-        xdt = np.linspace(0, S["total time"]/femtoseconds, total_frames)
-        psi_index = np.linspace(0, S["store steps"], total_frames)
-        
-        def func_animation(frame):
-            
-            time_ax.set_text(u"time = {} femtoseconds".format("%.3f" % (xdt[frame])))
-            
-            index = int(psi_index[frame])
-            wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
-            
-            formatted_num = "{:12.8e}".format(np.abs(energies[index]))
-            energy_ax.set_text(u"Energy =  "+ formatted_num)
-            
-            return wavefunction_plot, time_ax
-
-
-        ani = animation.FuncAnimation(fig, func_animation,
-                                    blit=True, frames=total_frames, interval= 1/fps * 1000)
-        if save_animation == True:
-            if(title == ''):
-                title = "animation"
-            ani.save(S["path save"] + title +'.gif', fps = fps, metadata = dict(artist = 'Me'))
-        else:
-            plt.show()
-            
-            
 title = ""
 
 if(S["Number of States"]==0):
@@ -369,9 +177,22 @@ if(S["Number of States"]==3):
 
 if(S["Number of States"]>=4):
   title = title=S["title"]+" "+str(S["Number of States"])+"th eigenstate"
- 
 
-animate(xlim=[-S["extent"]/8,S["extent"]/8], ylim=[-S["extent"]/8,S["extent"]/8], potential_saturation = 0.5, 
-wavefunction_saturation = 0.2, animation_duration = S["animation duration"], 
-fps = S["fps"], save_animation = S["save animation"], title=title)
-
+ani = animate(
+Ψ_plot, 
+energies, 
+S["extent"], 
+V, 
+Vmin, 
+Vmax, 
+xlim=[-S["extent"]/8, S["extent"]/8], 
+ylim=[-S["extent"]/8, S["extent"]/8], 
+potential_saturation = 0.5, 
+wavefunction_saturation = 0.2, 
+animation_duration = S["animation duration"], 
+fps = S["fps"], 
+save_animation = S["save animation"], 
+title=title, 
+path_save = S["path save"], 
+total_time = S["total time"], 
+store_steps = S["store steps"])
