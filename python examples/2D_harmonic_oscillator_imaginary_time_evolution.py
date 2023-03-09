@@ -17,27 +17,27 @@ import matplotlib.animation as animation
 femtoseconds = 4.134137333518212 * 10.
 m_e = 1.0
 hbar = 1.0
-n = 256
+n = 350
 
-NStates = 4
+NStates = 6
 
 S = {
- "total time": 4 * femtoseconds,
- "store steps": 50,
- "σ": 1.0 * Å, #
+ "total time": 20 * femtoseconds, #15, NStates >= 5  = 20
+ "store steps": 20,
+ "σ": 1. * Å, #
  "v0": 64. * Å / femtoseconds, #initial_wavefunction momentum #64
  "initial wavefunction offset x": 0 * Å,
  "initial wavefunction offset y": 0 * Å,
  "N": n,
- "dt":  0.25/2,
- "extent": 20 * Å,#30
+ "dt":  0.5,
+ "extent": 30 * Å,#30
  "Number of States": NStates,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
  "fps": 30,
  "path save": "./gifs/",
- "title": "2D harmonic oscillator"
+ "title": "2D harmonic oscillator Coulomb potential"
 }
 
 x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
@@ -95,23 +95,21 @@ def Split_Step_NP(phi, store_steps, Nt_per_store_step, Ur, Uk, ite):
     return
 
 #potential energy operator
+# rotationally symmetric potential
+#V(x,y) = (1/2) k (x^2 + y^2)
 def V():
-    kx = 0.02
-    ky = 0.02
-    return 0.5 * kx * x**2 + 0.5 * ky * y**2
+    k = 0.03
+    return k * (x**2 + y**2)
 
 #potential energy operator
-def V2():
-    m = m_e
-    T = 0.5*femtoseconds
-    w = 2*np.pi/T
-    k = m* w**2
-  
-    print("oscillation_amplitude ", np.sqrt(m/k) * S["v0"]/Å, " amstrongs")
-
-    return 0.5 * k * x**2    +    0.5 * k * y**2
+# Coulomb potential for a point charge
+#V(x,y) = (q/4πε) log[(x^2 + y^2)^(1/2)]
+def V():
+    q = 0.5
+    ε = 1
+    π = np.pi
+    return (q/4*π*ε) * np.log(np.power((x**2 + y**2),0.5))
     
-
 #initial waveform
 def 𝜓0_x():
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
@@ -176,20 +174,20 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    Split_Step_NP(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
+    Split_Step_FFTW(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
 
-nos = S["Number of States"]-1
+nos = S["Number of States"]
 if (nos):
     t0 = time.time()
     bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
     for i in bar(range(nos)):
-        Split_Step_NP(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
+        Split_Step_FFTW(phi, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
         phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
         
@@ -301,7 +299,7 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
         ax.spines['right'].set_linewidth(1)              
                 
 
-        L = S["extent"] / Å / 4
+        L = S["extent"] / Å / 2
         potential_plot = ax.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
         interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])
@@ -355,8 +353,25 @@ def animate(xlim=None, ylim=None, figsize=(7, 7), animation_duration = 5, fps = 
             plt.show()
             
             
+title = ""
+
+if(S["Number of States"]==0):
+  title = title=S["title"]+ " Ground state"
+
+if(S["Number of States"]==1):
+  title = title=S["title"]+" "+str(S["Number of States"])+"st eigenstate"
+
+if(S["Number of States"]==2):
+  title = title=S["title"]+" "+str(S["Number of States"])+"nd eigenstate"
+
+if(S["Number of States"]==3):
+  title = title=S["title"]+" "+str(S["Number of States"])+"rd eigenstate" 
+
+if(S["Number of States"]>=4):
+  title = title=S["title"]+" "+str(S["Number of States"])+"th eigenstate"
+ 
 
 animate(xlim=[-S["extent"]/8,S["extent"]/8], ylim=[-S["extent"]/8,S["extent"]/8], potential_saturation = 0.5, 
 wavefunction_saturation = 0.2, animation_duration = S["animation duration"], 
-fps = S["fps"], save_animation = S["save animation"], title=S["title"]+" "+str(S["Number of States"])+" eigenstates")
+fps = S["fps"], save_animation = S["save animation"], title=title)
 
