@@ -1,7 +1,7 @@
 import numpy as np
 from constants import *
 import pyfftw
-
+import multiprocessing
 
 def fft_frequencies(N, dx, hbar):
     p1 = np.fft.fftfreq(N, d = dx) * hbar  * 2*np.pi
@@ -33,6 +33,29 @@ def apply_projection2(tmp, psi_list, dx):
 def differentiate_twice(f, p2):
     f = np.fft.ifftn(-p2*np.fft.fftn(f))
     return f
+
+'''
+def differentiate_once(f, p):
+    f = np.fft.ifft(1j*p*np.fft.fft(f))
+    return f
+
+def integrate_twice(f, p2):
+    F = np.fft.fftn(f)
+    F[1:] /= p2[1:]
+    F = np.fft.ifftn(F)
+    F -= F[0]
+    return F
+    
+def integrate_once(f, p):
+    # Compute the FFT of the function
+    F = np.fft.fftn(f)
+    # Divide each coefficient by the constant for the corresponding frequency
+    F[1:] /= p[1:]
+    return np.fft.ifftn(F)
+'''
+# Configure PyFFTW to use all cores (the default is single-threaded)
+pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
+pyfftw.interfaces.cache.enable()
 
 def Split_Step_FFTW(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):

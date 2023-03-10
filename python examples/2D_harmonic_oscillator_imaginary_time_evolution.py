@@ -5,14 +5,15 @@ import multiprocessing
 from visuals import *
 from constants import *
 from functions import *
+from scipy.stats import multivariate_normal
 
 S = {
- "total time": 10 * const["femtoseconds"], #for V_Coulomb: 15, NStates >= 5  = 20, >= 8 =35
+ "total time": 20 * const["femtoseconds"], #for V_Coulomb: 15, NStates >= 5  = 20, >= 8 =35
  "extent": 30 * const["Å"], #30
  "N": 350,
  "store steps": 20,
  "dt":  0.5,
- "Number of States": 4,
+ "Number of States": 5,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
@@ -20,59 +21,84 @@ S = {
  "path save": "./gifs/",
  "σ_x": 1. * const["Å"], 
  "σ_y": 1. * const["Å"], 
- "v0": 64. * const["Å"] / const["femtoseconds"], #initial_wavefunction momentum #64
+ "v0_x": 64. * const["Å"] / const["femtoseconds"], #initial_wavefunction momentum x
+ "v0_y": 64. * const["Å"] / const["femtoseconds"], #initial_wavefunction momentum y
  "initial wavefunction offset x": 0 * const["Å"],
  "initial wavefunction offset y": 0 * const["Å"], 
  "title": "2D harmonic oscillator Coulomb potential" #rotationally symmetric
  #"title": "2D harmonic oscillator rotationally symmetric potential"
 }
    
-x = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
-y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
-dx = x[1] - x[0]
-dy = y[1] - y[0]
-x, y = np.meshgrid(x,y)
+X = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
+Y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
+dx = X[1] - X[0]
+dy = Y[1] - Y[0]
+X, Y = np.meshgrid(X,Y)
 
 
 #potential energy operator
 # rotationally symmetric potential
 #V(x,y) = (1/2) k (x^2 + y^2)
-def V_Rotational():
+def V_Rotational(X, Y):
     k = 0.5
-    return k * (x**2 + y**2)
+    return k * (X**2 + Y**2)
 
 #potential energy operator
 # Coulomb potential for a point charge
 #V(x,y) = (q/4πε) log[(x^2 + y^2)^(1/2)]
-def V_Coulomb():
+def V_Coulomb(X, Y):
     q = 0.5
     ε = 1
     π = np.pi
-    return (q/4*π*ε) * np.log(np.power((x**2 + y**2),0.5))
+    return (q/4*π*ε) * np.log(np.power((X**2 + Y**2),0.5))
 
 
-V = V_Coulomb() 
+V = V_Coulomb(X, Y) 
 Vmin = np.amin(V)
 Vmax = np.amax(V)
     
+
 #initial waveform
-def 𝜓0_x():
+def 𝜓0_gaussian_wavepacket_2D(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
-    p_x0 = const["m_e"] * S["v0"]
-    σ = S["σ_x"]
-    return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
-    (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_x0*x*1j)
- 
+    p_x0 = const["m_e"] * v0_x
+    p_y0 = const["m_e"] * v0_y
+    σ = sigma_x
+    
+    norm = 1 / (2 * np.pi * sigma_x * sigma_y)
+    Z = np.exp(-(X-x0)**2/(2*sigma_x**2) - (Y-y0)**2/(2*sigma_y**2)) * norm * np.exp(1j*(p_x0*X+p_y0*Y))
+    #Zmax = np.amax(np.abs(Z))
+    #Z = Z/Zmax
+
+    #return Z 
+    
+    return np.exp( -1/(4* σ**2) * ((X-y0)**2 + (Y-y0)**2)) / np.sqrt(2*np.pi* σ**2) * np.exp(1j*(p_x0*X+p_y0*Y))     
+    #return np.exp(-(X-x0)**2/(4*σ_x**2) - (Y-y0)**2/(4*σ_y**2)) * np.exp(1j*(p_x0*X + p_y0*Y))
+    #np.exp(1j*(p_x0*X*Y+p_y0*Y*X)) 
+    #np.exp(1j*(p_x0*X**2+p_y0*Y**2)) 
+
+
 #initial waveform
-def 𝜓0_y():
-    #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_y0
-    p_y0 = m_e * S["v0"]
-    σ = S["σ_y"]
-    return np.exp( -1/(4* σ**2) * ((x-S["initial wavefunction offset x"])**2+
-    (y-S["initial wavefunction offset y"])**2)) / np.sqrt(2*np.pi* σ**2)  *np.exp(p_y0*y*1j) 
+def 𝜓0_gaussian_wavepacket_2D1(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
+    p_x0 = const["m_e"] * v0_x
+    p_y0 = const["m_e"] * v0_y
+    mean = [x0, y0]
+    cov = [[1, 0], [0, 1]]
+    pos = np.dstack((X, Y))
+    # Create the multivariate normal distribution object
+    rv = multivariate_normal(mean, cov)
+    Z = rv.pdf(pos) 
+    Zmax = np.amax(np.abs(Z))
+    Z /= Zmax 
+    Z = Z * np.exp(1j*(p_x0*X + p_y0*Y))
+    return Z 
 
 
-#plot(𝜓0_x(), S["extent"], V, Vmin, Vmax)
+psi_0 = 𝜓0_gaussian_wavepacket_2D(X, Y, S["v0_x"], 0, S["σ_x"], S["σ_y"], S["initial wavefunction offset x"], 
+S["initial wavefunction offset y"])
+
+#complex_plot_2D(psi_0, S["extent"], V, Vmin, Vmax) 
+#exit()
 
 
 dt_store = S["total time"] / S["store steps"]
@@ -93,19 +119,15 @@ else:
     Ur = np.exp(-0.5j*(dt/const["hbar"])*V())
     Uk = np.exp(-0.5j*(dt/(const["m"]*const["hbar"]))*p2)
         
-# Configure PyFFTW to use all cores (the default is single-threaded)
-pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
-pyfftw.interfaces.cache.enable()
-    
 
 tmp = pyfftw.zeros_aligned((S["N"], S["N"]), dtype='complex64',n = 16)
 c = pyfftw.zeros_aligned((S["N"], S["N"]), dtype='complex64',n = 16)
           
+print("Number of States", S["Number of States"])
 print("store steps", S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
-
         
-Ψ[0] = norm(𝜓0_x(), dx)       
+Ψ[0] = norm(psi_0, dx)       
 phi = np.array([Ψ[0]])
 
 # Define the ground state wave function

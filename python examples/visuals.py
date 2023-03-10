@@ -40,7 +40,7 @@ def complex_to_rgb(Z):
     c = hsv_to_rgb(   np.moveaxis(np.array([h,s,v]) , 0, -1)  ) # --> tuple
     return c
 
-def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0) -> np.ndarray:
+def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0):
     r = np.abs(Z)
     arg = np.angle(Z)
     
@@ -53,9 +53,19 @@ def complex_to_rgba(Z: np.ndarray, max_val: float = 1.0) -> np.ndarray:
     abs_z = np.where(abs_z> 1., 1. ,abs_z)
     return np.concatenate((rgb, abs_z.reshape((*abs_z.shape,1))), axis= (abs_z.ndim))
     
-def plot(Ψ_plot, extent = 10, V = np.ndarray, Vmin = -10, Vmax = 10, t=0, xlim=None, ylim=None, 
-figsize=(640*px, 640*px), potential_saturation=0.5, wavefunction_saturation=0.2):
-
+def complex_plot_2D(
+    Ψ_plot = np.ndarray, 
+    extent = 10., 
+    V = np.ndarray, 
+    Vmin = -10., 
+    Vmax = 10., 
+    t=0, 
+    xlim=None, 
+    ylim=None, 
+    figsize=(640*px, 640*px), 
+    potential_saturation=0.5, 
+    wavefunction_saturation=0.2
+):
         fig = plt.figure(figsize=figsize, facecolor='#002b36')
         
         ax = fig.add_subplot(1, 1, 1)  
@@ -75,7 +85,7 @@ figsize=(640*px, 640*px), potential_saturation=0.5, wavefunction_saturation=0.2)
         
         ax.set_xlabel("[Å]")
         ax.set_ylabel("[Å]")
-        ax.set_title("$\psi(x,y,t)$")
+        ax.set_title("$\psi(x,y,t)$", color='white')
 
         time_ax = ax.text(0.97,0.97, "",  color = "white",
                         transform=ax.transAxes, ha="right", va="top")
@@ -85,16 +95,19 @@ figsize=(640*px, 640*px), potential_saturation=0.5, wavefunction_saturation=0.2)
             ax.set_xlim(np.array(xlim)/const["femtoseconds"])
         if ylim != None:
             ax.set_ylim(np.array(ylim)/const["femtoseconds"])
-      
+        
         
         L = extent/const["femtoseconds"]
         
+    
         ax.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
         interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])  
-
+      
+        
         ax.imshow(complex_to_rgba(Ψ_plot, max_val= wavefunction_saturation), origin = "lower", 
         interpolation = "gaussian", extent = [-L/2, L/2, -L/2, L/2])  
+        
         plt.show()
    
 def complex_plot(x, phi):
