@@ -8,11 +8,11 @@ from functions import *
 from scipy.stats import multivariate_normal
 
 S = {
- "total time": 20 * const["femtoseconds"], #for V_Coulomb: 15, NStates >= 5  = 20, >= 8 =35
+ "total time": 10 * const["femtoseconds"], #for V_Coulomb: 15, NStates >= 5  = 20, >= 8 =35
  "extent": 30 * const["Å"], #30
  "N": 350,
  "store steps": 20,
- "dt":  0.5,
+ "dt":  1,
  "Number of States": 5,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
@@ -59,7 +59,7 @@ Vmax = np.amax(V)
     
 
 #initial waveform
-def 𝜓0_gaussian_wavepacket_2D(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
+def 𝜓0_gaussian_wavepacket_2D1(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
     #This wavefunction correspond to a gaussian wavepacket with a mean X momentum equal to p_x0
     p_x0 = const["m_e"] * v0_x
     p_y0 = const["m_e"] * v0_y
@@ -72,18 +72,18 @@ def 𝜓0_gaussian_wavepacket_2D(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
 
     #return Z 
     
-    return np.exp( -1/(4* σ**2) * ((X-y0)**2 + (Y-y0)**2)) / np.sqrt(2*np.pi* σ**2) * np.exp(1j*(p_x0*X+p_y0*Y))     
+    return np.exp( -1/(4* σ**2) * ((X-x0)**2 + (Y-y0)**2)) / np.sqrt(2*np.pi* σ**2) * np.exp(1j*(p_x0*X+p_y0*Y))     
     #return np.exp(-(X-x0)**2/(4*σ_x**2) - (Y-y0)**2/(4*σ_y**2)) * np.exp(1j*(p_x0*X + p_y0*Y))
     #np.exp(1j*(p_x0*X*Y+p_y0*Y*X)) 
     #np.exp(1j*(p_x0*X**2+p_y0*Y**2)) 
 
 
 #initial waveform
-def 𝜓0_gaussian_wavepacket_2D1(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
+def 𝜓0_gaussian_wavepacket_2D(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
     p_x0 = const["m_e"] * v0_x
     p_y0 = const["m_e"] * v0_y
     mean = [x0, y0]
-    cov = [[1, 0], [0, 1]]
+    cov = [[4, 0], [0, 4]]
     pos = np.dstack((X, Y))
     # Create the multivariate normal distribution object
     rv = multivariate_normal(mean, cov)
@@ -97,8 +97,7 @@ def 𝜓0_gaussian_wavepacket_2D1(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
 psi_0 = 𝜓0_gaussian_wavepacket_2D(X, Y, S["v0_x"], 0, S["σ_x"], S["σ_y"], S["initial wavefunction offset x"], 
 S["initial wavefunction offset y"])
 
-#complex_plot_2D(psi_0, S["extent"], V, Vmin, Vmax) 
-#exit()
+#complex_plot_2D(psi_0, S["extent"], V, Vmin, Vmax) ;exit()
 
 
 dt_store = S["total time"] / S["store steps"]
@@ -134,20 +133,20 @@ phi = np.array([Ψ[0]])
 t0 = time.time()
 bar = progressbar.ProgressBar(maxval=1)
 for _ in bar(range(1)):
-    Split_Step_FFTW(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
+    Split_Step_NP(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
 print("Took", time.time() - t0)
 
 
 Ψ[0] = Ψ[-1]
 phi = np.array([Ψ[0]])
 
-nos = S["Number of States"]
+nos = S["Number of States"]-1
 if (nos):
     t0 = time.time()
     bar = progressbar.ProgressBar(maxval=nos)
     # raising operators
     for i in bar(range(nos)):
-        Split_Step_FFTW(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
+        Split_Step_NP(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
         phi = np.concatenate([phi, [Ψ[-1]]])
     print("Took", time.time() - t0)
         
