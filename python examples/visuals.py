@@ -98,7 +98,7 @@ def complex_plot_2D(
         
         
         L = extent/const["femtoseconds"]
-        
+ 
     
         ax.imshow((V + Vmin)/(Vmax-Vmin), 
         vmax = 1.0/potential_saturation, vmin = 0, cmap = newcmp, origin = "lower", 
