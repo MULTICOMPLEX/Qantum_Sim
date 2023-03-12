@@ -383,7 +383,7 @@ wavefunction_saturation=0.8):
             index = int(psi_index[frame])
             wavefunction_plot.set_data(complex_to_rgba(Ψ_plot[index], max_val= wavefunction_saturation))
             
-            formatted_num = "{:12.8e}".format(np.abs(energies[index]))
+            formatted_num = "{:14.14e}".format(np.abs(energies[index]))
             energy_ax.set_text(u"Energy =  "+ formatted_num)
             
             return wavefunction_plot, time_ax

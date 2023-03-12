@@ -8,12 +8,12 @@ from functions import *
 from scipy.stats import multivariate_normal
 
 S = {
- "total time": 10 * const["femtoseconds"], #for V_Coulomb: 15, NStates >= 5  = 20, >= 8 =35
- "extent": 30 * const["Å"], #30
+ "total time": 30 * const["femtoseconds"], 
+ "extent": 35 * const["Å"], #30
  "N": 350,
- "store steps": 20,
+ "store steps": 150,
  "dt":  1,
- "Number of States": 5,
+ "Number of States": 6,
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
@@ -88,9 +88,9 @@ def 𝜓0_gaussian_wavepacket_2D(X, Y, v0_x, v0_y, sigma_x, sigma_y, x0, y0):
     # Create the multivariate normal distribution object
     rv = multivariate_normal(mean, cov)
     Z = rv.pdf(pos) 
+    Z = Z * np.exp(1j*(p_x0*X + p_y0*Y))
     Zmax = np.amax(np.abs(Z))
     Z /= Zmax 
-    Z = Z * np.exp(1j*(p_x0*X + p_y0*Y))
     return Z 
 
 
@@ -174,8 +174,9 @@ def expectation_value(psi, operator):
 
 energies = np.array([expectation_value(i, hamiltonian_operator) for i in Ψ])
 
-print("\nenergy =\n", energies.reshape(-1, 1))
-
+np.set_printoptions(precision=15)
+print("\nenergy =\n", np.abs(energies.reshape(-1, 1)))
+np.set_printoptions(precision=8)
 
 Ψmax = np.amax(np.abs(Ψ))
 

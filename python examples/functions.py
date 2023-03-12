@@ -64,11 +64,8 @@ def Split_Step_FFTW(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
             c = pyfftw.interfaces.numpy_fft.fftn(Ur*tmp)
             tmp = Ur * pyfftw.interfaces.numpy_fft.ifftn(Uk*c)
             if(ite):
-              tmp = apply_projection(tmp, phi, dx)
-        if(ite):
-          Ψ[i+1] = norm(tmp, dx)
-        else:
-          Ψ[i+1] = tmp
+              tmp = norm(apply_projection(tmp, phi, dx), dx)
+        Ψ[i+1] = tmp
     return
 
 def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
@@ -78,9 +75,6 @@ def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
             c = np.fft.fftn(Ur*tmp)
             tmp = Ur * np.fft.ifftn(Uk*c)
             if(ite):
-              tmp = apply_projection(tmp, phi, dx)
-        if(ite):
-          Ψ[i+1] = norm(tmp, dx)
-        else:
-          Ψ[i+1] = tmp
+              tmp = norm(apply_projection(tmp, phi, dx), dx)
+        Ψ[i+1] = tmp
     return
