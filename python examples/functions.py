@@ -92,7 +92,7 @@ def ground_state(psi_0, Ψ, dx, store_steps, Nt_per_store_step, Ur, Uk, ite, pat
     if(save):
         title = path_data+title   
         np.save(title, Ψ)
-    return Ψ[-1]
+    return Ψ
 
 def eigenvalues_exited_states(Ψ, phi, state, dx, store_steps, Nt_per_store_step, Ur, Uk, ite, path_data, save):
     # raising operators
