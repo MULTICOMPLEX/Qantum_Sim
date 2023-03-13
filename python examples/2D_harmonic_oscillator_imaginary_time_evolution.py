@@ -6,19 +6,21 @@ from visuals import *
 from constants import *
 from functions import *
 from scipy.stats import multivariate_normal
+import os.path
 
 S = {
- "total time": 30 * const["femtoseconds"], 
+ "total time": 40 * const["femtoseconds"], 
  "extent": 35 * const["Å"], #30
  "N": 350,
  "store steps": 150,
  "dt":  1,
- "Number of States": 6,
+ "Number of States": 19, #n1 = ground state
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
  "fps": 30,
- "path save": "./gifs/",
+ "path gifs": "./gifs/",
+ "path data": "./data/",
  "σ_x": 1. * const["Å"], 
  "σ_y": 1. * const["Å"], 
  "v0_x": 64. * const["Å"] / const["femtoseconds"], #initial_wavefunction momentum x
@@ -28,7 +30,8 @@ S = {
  "title": "2D harmonic oscillator Coulomb potential" #rotationally symmetric
  #"title": "2D harmonic oscillator rotationally symmetric potential"
 }
-   
+
+
 X = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 Y = np.linspace(-S["extent"]/2, S["extent"]/2, S["N"])
 dx = X[1] - X[0]
@@ -122,34 +125,60 @@ else:
 tmp = pyfftw.zeros_aligned((S["N"], S["N"]), dtype='complex64',n = 16)
 c = pyfftw.zeros_aligned((S["N"], S["N"]), dtype='complex64',n = 16)
           
-print("Number of States", S["Number of States"])
+print("Number of States =", S["Number of States"])
 print("store steps", S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
-        
-Ψ[0] = norm(psi_0, dx)       
-phi = np.array([Ψ[0]])
 
-# Define the ground state wave function
-t0 = time.time()
+
+title = "Ground_State.npy"
+path = S["path data"]      
+if(os.path.isfile(path+title)==False):
+    Ψ = ground_state(psi_0, Ψ, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"], S["path data"], title, True)
+
+print("Retrieving Ground State...")
 bar = progressbar.ProgressBar(maxval=1)
-for _ in bar(range(1)):
-    Split_Step_NP(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
-print("Took", time.time() - t0)
+t0 = time.time()
+for i in bar(range(1)):
+    Ψ = np.load(path+title)
+print("Took", time.time() - t0) 
 
+'''
+nos = S["Number of States"]-1
+if (nos):
+    Ψ[0] = Ψ[-1] 
+    phi = np.array([Ψ[0]])
+    bar = progressbar.ProgressBar(maxval=nos)
+    t0 = time.time()
+    for i in bar(range(nos)):    
+        phi = eigenvalues_exited_states(Ψ, phi, i, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"], 
+        S["path data"], True)
+print("Took", time.time() - t0) 
+'''
 
-Ψ[0] = Ψ[-1]
+Ψ[0] = Ψ[-1] 
 phi = np.array([Ψ[0]])
+    
+nos = S["Number of States"]-2
+if (nos):
+    bar = progressbar.ProgressBar(maxval=nos)
+    print("Retrieving Exited States 1.."+str(S["Number of States"]-2)+"...")
+    t0 = time.time()
+    for i in bar(range(nos)):
+        title = S["path data"]+"Exited_State[{}].npy".format(i+1)
+        data = np.load(title)
+        phi = np.concatenate([phi, [data]])
+    print("Took", time.time() - t0) 
 
 nos = S["Number of States"]-1
 if (nos):
+    print("Computing Exited State "+str(S["Number of States"]-1)+"...")
     t0 = time.time()
-    bar = progressbar.ProgressBar(maxval=nos)
-    # raising operators
-    for i in bar(range(nos)):
-        Split_Step_NP(Ψ, phi, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"])
-        phi = np.concatenate([phi, [Ψ[-1]]])
+    bar = progressbar.ProgressBar(maxval=1)
+    for i in bar(range(1)):
+        phi = eigenvalues_exited_states(Ψ, phi, S["Number of States"], dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"],
+        S["path data"], True)
     print("Took", time.time() - t0)
-        
+
 
 hbar = 1.054571817e-34    # Reduced Planck constant in J*s
 m = 9.10938356e-31        # Mass of electron in kg
@@ -185,11 +214,8 @@ np.set_printoptions(precision=8)
 
 title = ""
 
-if(S["Number of States"]==0):
-  title = title=S["title"]+ " Ground state"
-
 if(S["Number of States"]==1):
-  title = title=S["title"]+" "+str(S["Number of States"])+"st eigenstate"
+  title = title=S["title"]+ " Ground state"
 
 if(S["Number of States"]==2):
   title = title=S["title"]+" "+str(S["Number of States"])+"nd eigenstate"
@@ -215,6 +241,6 @@ animation_duration = S["animation duration"],
 fps = S["fps"], 
 save_animation = S["save animation"], 
 title=title, 
-path_save = S["path save"], 
+path_save = S["path gifs"], 
 total_time = S["total time"], 
 store_steps = S["store steps"])

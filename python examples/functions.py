@@ -2,6 +2,8 @@ import numpy as np
 from constants import *
 import pyfftw
 import multiprocessing
+import time
+import progressbar
 
 def fft_frequencies(N, dx, hbar):
     p1 = np.fft.fftfreq(N, d = dx) * hbar  * 2*np.pi
@@ -78,3 +80,26 @@ def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
               tmp = norm(apply_projection(tmp, phi, dx), dx)
         Ψ[i+1] = tmp
     return
+
+def ground_state(psi_0, Ψ, dx, store_steps, Nt_per_store_step, Ur, Uk, ite, path_data, title, save):
+# Define the ground state wave function
+    t0 = time.time()
+    Ψ[0] = norm(psi_0, dx)       
+    phi = np.array([Ψ[0]])
+    print("Computing Ground State...")
+    Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite)
+    print("Took", time.time() - t0)
+    if(save):
+        title = path_data+title   
+        np.save(title, Ψ)
+    return Ψ[-1]
+
+def eigenvalues_exited_states(Ψ, phi, state, dx, store_steps, Nt_per_store_step, Ur, Uk, ite, path_data, save):
+    # raising operators
+    Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite)
+    if(save):
+        title = path_data+"Exited_State[{}].npy".format(state-1)
+        print("Saving State...")
+        np.save(title, Ψ[-1])
+    phi = np.concatenate([phi, [Ψ[-1]]])
+    return phi
