@@ -9,12 +9,12 @@ from scipy.stats import multivariate_normal
 import os.path
 
 S = {
- "total time": 50 * const["femtoseconds"], 
+ "total time": 200 * const["femtoseconds"], #200
  "extent": 35 * const["Å"], #30
  "N": 350,
- "store steps": 150,
+ "store steps": 450, #450
  "dt":  1,
- "Number of States": 17, #n1 = ground state
+ "Number of States": 20, #n1 = ground state
  "imaginary time evolution": True,
  "animation duration": 4, #seconds
  "save animation": True,
@@ -130,18 +130,26 @@ print("store steps", S["store steps"])
 print("Nt_per_store_step",Nt_per_store_step)
 
 
+pb = np.zeros_like(Ψ[0])
+gdl = False
+
 for inds in range(S["Number of States"]):
 
     title = "Ground_State.npy"
     path = S["path data"]      
     if(os.path.isfile(path+title)==False):
         Ψ = ground_state(psi_0, Ψ, dx, S["store steps"], Nt_per_store_step, Ur, Uk, S["imaginary time evolution"], S["path data"], title, True)
-
-    print("Retrieving Ground State...")
-    t0 = time.time()
-    Ψ = np.load(path+title)
-    print("Took", time.time() - t0) 
-
+        pb = np.copy(Ψ[-1])
+        gdl = True
+       
+    elif(gdl==False):
+        print("Retrieving Ground State...")
+        t0 = time.time()
+        Ψ = np.load(path+title)
+        pb = np.copy(Ψ[-1])
+        gdl = True
+        print("Took", time.time() - t0)
+       
     '''
     nos = S["Number of States"]-1
     if (nos):
@@ -155,13 +163,13 @@ for inds in range(S["Number of States"]):
     print("Took", time.time() - t0) 
     '''
     if(inds>0):
-        Ψ[0] = Ψ[-1] 
+        Ψ[0] = pb 
     phi = np.array([Ψ[0]])
     
     nos = inds-1
     if (nos>0):
         bar = progressbar.ProgressBar(maxval=nos)
-        print("Retrieving Exited States 1.."+str(nos)+"...")
+        print("Retrieving Exited States 1.."+str(nos))
         t0 = time.time()
         for i in bar(range(nos)):
             title = S["path data"]+"Exited_State[{}].npy".format(i+1)
@@ -204,6 +212,7 @@ for inds in range(S["Number of States"]):
 
     np.set_printoptions(precision=15)
     print("\nenergy =\n", np.abs(energies.reshape(-1, 1)))
+    print("\n")
     np.set_printoptions(precision=8)
 
     Ψmax = np.amax(np.abs(Ψ))

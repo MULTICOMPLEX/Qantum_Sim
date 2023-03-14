@@ -68,7 +68,7 @@ def Split_Step_FFTW(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
             if(ite):
               tmp = norm(apply_projection(tmp, phi, dx), dx)
         Ψ[i+1] = tmp
-    return
+    return Ψ
 
 def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
     for i in range(store_steps):
@@ -79,7 +79,7 @@ def Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite):
             if(ite):
               tmp = norm(apply_projection(tmp, phi, dx), dx)
         Ψ[i+1] = tmp
-    return
+    return Ψ
 
 def ground_state(psi_0, Ψ, dx, store_steps, Nt_per_store_step, Ur, Uk, ite, path_data, title, save):
 # Define the ground state wave function
@@ -87,7 +87,7 @@ def ground_state(psi_0, Ψ, dx, store_steps, Nt_per_store_step, Ur, Uk, ite, pat
     Ψ[0] = norm(psi_0, dx)       
     phi = np.array([Ψ[0]])
     print("Computing Ground State...")
-    Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite)
+    Ψ = Split_Step_NP(Ψ, phi, dx, store_steps, Nt_per_store_step, Ur, Uk, ite)
     print("Took", time.time() - t0)
     if(save):
         title = path_data+title   
